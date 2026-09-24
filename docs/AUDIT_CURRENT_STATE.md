@@ -130,6 +130,24 @@ README asked for Node 22+ and `pnpm install` without a lockfile. It now says Nod
 - Vercel CLI is not logged in from this machine.
 - Flaticon and Lottie are not installed. Licenses are not yet acceptable for shipping.
 
+## Addenda from late reports
+
+The workbook import audit confirmed the same counts (4 weeks, 12 sessions, 140 items, 33 exercises, 27 media, 3 tests) and did not re-run the importer. These parser gaps stay in the seed. They are not foundation fixes and they are not Wave 01.
+
+| ID | Evidence | Later wave |
+| --- | --- | --- |
+| DATA-004 | Week 4 lunges `E17` is unitless `20.0`; the logger can show the preferred unit | Wave 03, after the coach names kg or lbs |
+| DATA-005 | Hip thrust is three slugs: machine, Smith, and the test | Coach confirmation, then Wave 04 |
+| DATA-006 | `8 par côté` never becomes reps | Wave 03 |
+| DATA-007 | Section title `3 rounds` is not applied to set counts | Wave 03 |
+| DATA-008 | Dashboard 1RM inputs are null and unused by the app | Wave 06 |
+| DATA-009 | Some LiftManual URLs do not match the printed exercise name | Wave 04, workbook edit first |
+| DATA-012 | Tests UI always stores Brzycki; only back squat has that formula in the seed | Wave 06 |
+
+`DATA-001` in the findings table above is the importer newline fix. It is not the program-length anomaly. That anomaly remains `PROGRAM_LENGTH_CONTRADICTION` in `seed/import-report.json`.
+
+The environment audit ran after the lockfile existed. Two residuals stay open. CI uses Python 3.12 while this machine uses 3.14.7, and there is no `.python-version`. `@types/node` is still the Node 22 types while the runtime is Node 24. The `package.json` `pnpm.onlyBuiltDependencies` entry stays on purpose: pnpm 10.17.1 in CI reads it, and `pnpm-workspace.yaml` `allowBuilds` covers the local pnpm 11 shim.
+
 ## Recommendation
 
 Merge foundation only after CI is green. Next build wave is Wave 01, after the Flaticon license is confirmed. Do not rewrite the service worker or the training seed in that wave.
