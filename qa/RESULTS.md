@@ -37,6 +37,22 @@ Le container de generation ne peut pas joindre `registry.npmjs.org`. `corepack p
 
 Le detail du blocage reseau est conserve dans `qa/dependency-network.txt`.
 
+## Foundation pass — 2026-09-24
+
+Executed on Windows with Node 24.20.0 and pnpm 10.17.1. This pass replaces the blocked npm checks above.
+
+| Controle | Statut | Resultat |
+| --- | --- | --- |
+| `pnpm install` + lockfile | PASS | `pnpm-lock.yaml` generated |
+| `pnpm lint` | PASS | 0 errors, 2 warnings (`<img>` in ExerciseMedia for local blobs) |
+| `pnpm typecheck` | PASS | `tsc --noEmit` |
+| `pnpm test` | PASS | Vitest 7/7 |
+| `pnpm build` | PASS | Next.js 16.3.6 |
+| `pnpm test:e2e` | PASS | 60/60, including WebKit 375×667 and Chromium 430×932, 412×915, 768×1024, 1440×900 |
+| Import rerun | PASS | JSON values and LF bytes match the committed seed |
+
+Playwright hits `pnpm dev`. Next.js 16 blocks dev assets from `127.0.0.1` unless `allowedDevOrigins` includes that host. That is set in `next.config.ts`.
+
 ## A verifier dans l'environnement de deploiement
 
 1. Executer `pnpm install` avec acces au registre npm.

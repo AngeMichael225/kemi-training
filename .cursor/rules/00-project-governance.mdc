@@ -1,0 +1,14 @@
+---
+description: KEMI project governance for every change
+alwaysApply: true
+---
+
+# Project governance
+
+- The coach workbook is the business source of truth. Do not invent sessions, exercises, loads, sets, reps, phases, Coach Tips, or strength tests.
+- Keep workbook anomalies. Document them. Do not silently "fix" imported data.
+- No secrets in git, chat, or client bundles. Never commit `.env.local`.
+- Do not use `any` to hide a TypeScript error.
+- No destructive git, remote database resets, or production deploys unless the user explicitly asks.
+- Mobile-first. iPhone 14 Pro Max (430×932) is the primary viewport.
+- Before finishing app changes, run `pnpm lint`, `pnpm typecheck`, and `pnpm test`.

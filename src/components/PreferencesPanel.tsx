@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, Moon, Ruler, Volume2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { WeightUnit } from "@/lib/units";
 import { getPreference, getPreferredWeightUnit, setPreference } from "@/lib/offline-db";
 
@@ -9,16 +9,22 @@ export function PreferencesPanel() {
   const [unit, setUnit] = useState<WeightUnit>("kg");
   const [sound, setSound] = useState(true);
   const [notifications, setNotifications] = useState(false);
+  const unitTouched = useRef(false);
 
   useEffect(() => {
     void Promise.all([
       getPreferredWeightUnit(),
       getPreference<boolean>("timerSound", true),
       getPreference<boolean>("notifications", false),
-    ]).then(([u, s, n]) => { setUnit(u); setSound(s); setNotifications(n); });
+    ]).then(([u, s, n]) => {
+      if (!unitTouched.current) setUnit(u);
+      setSound(s);
+      setNotifications(n);
+    });
   }, []);
 
   async function chooseUnit(next: WeightUnit) {
+    unitTouched.current = true;
     setUnit(next);
     await setPreference("preferredWeightUnit", next);
   }
@@ -37,7 +43,7 @@ export function PreferencesPanel() {
   return (
     <div className="stack">
       <section className="card card-pad stack">
-        <div className="row"><Ruler size={18} className="muted" /><div><h2 className="h3">Unites de charge</h2><p className="caption" style={{ margin: "3px 0 0" }}>La valeur source reste intacte. Seul l'affichage est converti.</p></div></div>
+        <div className="row"><Ruler size={18} className="muted" /><div><h2 className="h3">Unites de charge</h2><p className="caption" style={{ margin: "3px 0 0" }}>La valeur source reste intacte. Seul l’affichage est converti.</p></div></div>
         <div className="segmented"><button type="button" data-active={unit === "kg"} onClick={() => void chooseUnit("kg")}>Kilogrammes</button><button type="button" data-active={unit === "lbs"} onClick={() => void chooseUnit("lbs")}>Livres</button></div>
       </section>
       <section className="card card-pad stack">

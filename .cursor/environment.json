@@ -1,0 +1,11 @@
+{
+  "name": "kemi-training",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "pnpm install --frozen-lockfile && python3 -m pip install --user -r requirements-dev.txt && pnpm exec playwright install chromium webkit",
+  "ports": [
+    { "name": "next", "port": 3000 }
+  ]
+}

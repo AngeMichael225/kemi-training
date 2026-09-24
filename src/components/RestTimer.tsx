@@ -16,7 +16,7 @@ export function RestTimer({
   onDone: () => void;
 }) {
   const [remainingMs, setRemainingMs] = useState(() => Math.max(0, targetEndTime - Date.now()));
-  const initialMs = useRef(Math.max(1_000, targetEndTime - Date.now()));
+  const [durationMs] = useState(() => Math.max(1_000, targetEndTime - Date.now()));
   const notifiedRef = useRef(false);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function RestTimer({
   }, [targetEndTime, nextLabel, onDone]);
 
   const seconds = remainingMs / 1000;
-  const progress = Math.max(0, Math.min(100, (remainingMs / initialMs.current) * 100));
+  const progress = Math.max(0, Math.min(100, (remainingMs / durationMs) * 100));
 
   return (
     <div className="rest-panel" role="dialog" aria-modal="true" aria-label="Minuteur de repos">

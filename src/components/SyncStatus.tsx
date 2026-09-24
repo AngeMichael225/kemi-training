@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Cloud, CloudOff, LoaderCircle } from "lucide-react";
+import { hasSupabaseBrowserEnv } from "@/lib/env";
 import { syncPendingMutations, type SyncState } from "@/lib/sync";
 
 const labels: Record<SyncState, string> = {
@@ -13,9 +14,13 @@ const labels: Record<SyncState, string> = {
 };
 
 export function SyncStatus({ compact = false }: { compact?: boolean }) {
-  const [state, setState] = useState<SyncState>(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "synced");
+  const [state, setState] = useState<SyncState>("synced");
 
   const runSync = useCallback(async () => {
+    if (!hasSupabaseBrowserEnv()) {
+      setState("synced");
+      return;
+    }
     if (!navigator.onLine) {
       setState("offline");
       return;
@@ -29,8 +34,9 @@ export function SyncStatus({ compact = false }: { compact?: boolean }) {
     const offline = () => setState("offline");
     window.addEventListener("online", online);
     window.addEventListener("offline", offline);
-    void runSync();
+    const kickoff = window.setTimeout(() => void runSync(), 0);
     return () => {
+      window.clearTimeout(kickoff);
       window.removeEventListener("online", online);
       window.removeEventListener("offline", offline);
     };

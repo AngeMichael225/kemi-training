@@ -1,6 +1,10 @@
 # KEMI Training - QA Plan
 
 ## Automated checks
+
+`pnpm typecheck` is `tsc --noEmit`. The static mirror in `qa/preview` is not a Playwright run. Current e2e specs cover route overflow, local login, session start/reload, rest timer, strength test, and the kg/lbs toggle. "Program week opens" and "completed workout appears in progress history" are still manual until a later wave.
+
+## Automated checks (detail)
 ### Unit
 - kg/lbs conversion
 - gym increment rounding

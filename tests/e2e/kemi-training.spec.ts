@@ -4,8 +4,12 @@ test.describe("KEMI Training local-first flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/auth/login");
     const localMode = page.getByRole("link", { name: /Continuer en mode local/i });
-    if (await localMode.isVisible().catch(() => false)) await localMode.click();
-    else await page.goto("/today");
+    if (await localMode.isVisible().catch(() => false)) {
+      await localMode.click();
+      await page.waitForURL(/\/today/);
+    } else {
+      await page.goto("/today");
+    }
   });
 
   test("home is mobile-safe and starts a workout", async ({ page }) => {
@@ -21,6 +25,7 @@ test.describe("KEMI Training local-first flow", () => {
 
   test("active workout survives reload", async ({ page }) => {
     await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
+    await expect(page).toHaveURL(/\/session\//);
     const before = await page.getByRole("heading", { level: 1 }).textContent();
     await page.reload();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(before ?? "");
@@ -34,7 +39,7 @@ test.describe("KEMI Training local-first flow", () => {
     }
     const setButton = page.getByRole("button", { name: /S.rie termin.e|Test complet/i });
     await setButton.click();
-    await expect(page.getByText(/^REST$/i)).toBeVisible();
+    await expect(page.getByRole("dialog", { name: /Minuteur de repos/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /15 SEC/i })).toBeVisible();
     await page.getByRole("button", { name: /Passer|Skip/i }).click();
   });

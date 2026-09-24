@@ -3,16 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": "24.x",
+    "pnpm": "10.17.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "unrs-resolver"]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:webkit": "playwright test --project=webkit",
+    "test:e2e:webkit": "playwright test --project=webkit-compact-iphone",
     "import:training": "python scripts/import_training_xlsx.py \"data/source/Training Routine - KEMI S.xlsx\" seed/kemi-training-program.json --report seed/import-report.json",
     "seed": "tsx scripts/seed-supabase.ts",
     "import-training-xlsx": "./scripts/import-training-xlsx"
@@ -37,6 +44,7 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.0.0",
     "jsdom": "^26.0.0",
+    "supabase": "^2.117.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.9.0",

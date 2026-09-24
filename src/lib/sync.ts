@@ -16,9 +16,8 @@ export async function syncPendingMutations(): Promise<SyncState> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(mutation),
       });
-      if (response.status === 401 || response.status === 503) {
-        return "pending";
-      }
+      if (response.status === 401) return "pending";
+      if (response.status === 503) return "synced";
       if (!response.ok) return "error";
       await deletePendingMutation(mutation.id);
     } catch {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Minus, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { SessionSetLog, WorkoutItem } from "@/lib/training-model";
 import type { WeightUnit } from "@/lib/units";
 import { displayWeight } from "@/lib/units";
@@ -27,11 +27,6 @@ export function SetTracker({
   );
   const [weight, setWeight] = useState<number | null>(targetWeight.value);
   const [reps, setReps] = useState<number | null>(item.prescribed_reps);
-
-  useEffect(() => {
-    setWeight(targetWeight.value);
-    setReps(item.prescribed_reps);
-  }, [item.id, setNumber, targetWeight.value, item.prescribed_reps]);
 
   const weightStep = preferredUnit === "kg" ? 1.25 : 5;
   const hasWeight = item.prescribed_weight !== null || weight !== null || Boolean(item.load_raw);

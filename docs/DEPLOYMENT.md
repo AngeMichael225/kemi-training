@@ -15,7 +15,7 @@ The service-role key is seed-only and must never be exposed as a Vercel `NEXT_PU
 2. Add only the runtime public variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_APP_URL`.
 3. Do not add `SUPABASE_SERVICE_ROLE_KEY` unless a protected server-only deployment workflow explicitly requires it; the running app does not need it.
 4. Build command: `pnpm build`.
-5. Install command: `pnpm install --frozen-lockfile` once a lockfile has been generated in a connected development environment.
+5. Install command: `pnpm install --frozen-lockfile`. Node 24. `pnpm-lock.yaml` is committed.
 
 ## PWA validation
 After deployment over HTTPS, open Safari on iPhone, add the site to the Home Screen, launch standalone, then validate manifest theme, safe areas, media playback and offline reload of a previously opened session.

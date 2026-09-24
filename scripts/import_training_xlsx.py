@@ -2,6 +2,7 @@
 import argparse
 import json
 import re
+import sys
 import unicodedata
 import uuid
 from pathlib import Path
@@ -217,6 +218,8 @@ def extract_hyperlink(cell: Any) -> tuple[str | None, str | None]:
 
 
 def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument('input')
     ap.add_argument('output')
@@ -548,7 +551,7 @@ def main() -> None:
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
     report = {
         'source': input_path.name,
         'sheet_count': len(wbf.sheetnames),
@@ -562,7 +565,7 @@ def main() -> None:
         'strength_test_count': len(tests),
         'anomalies': anomalies,
     }
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 

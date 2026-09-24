@@ -19,25 +19,35 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
   const [testIndex, setTestIndex] = useState(initialIndex);
   const [setIndex, setSetIndex] = useState(0);
   const [unit, setUnit] = useState<WeightUnit>("kg");
-  const [actuals, setActuals] = useState<ActualSet[]>([]);
+  const [actuals, setActuals] = useState<ActualSet[]>(() => {
+    const first = tests[initialIndex] ?? tests[0];
+    return first.sets.map((set) => ({
+      weight: set.weight === null ? null : displayWeight(set.weight, set.weight_unit ?? "kg", "kg").value,
+      reps: set.repetitions,
+      completed: false,
+    }));
+  });
   const [restTarget, setRestTarget] = useState<number | null>(null);
   const [savedResult, setSavedResult] = useState<StrengthTestResultLocal | null>(null);
   const test = tests[testIndex];
   const prescribed = test.sets[setIndex];
+  const draftKey = `${test.id}:${unit}`;
+  const [draftKeySeen, setDraftKeySeen] = useState(draftKey);
 
-  useEffect(() => {
-    void getPreferredWeightUnit().then(setUnit);
-  }, []);
-
-  useEffect(() => {
+  if (draftKeySeen !== draftKey) {
+    setDraftKeySeen(draftKey);
     setSetIndex(0);
     setSavedResult(null);
     setActuals(test.sets.map((set) => ({
       weight: set.weight === null ? null : displayWeight(set.weight, set.weight_unit ?? "kg", unit).value,
-      reps: set.répétitions,
+      reps: set.repetitions,
       completed: false,
     })));
-  }, [test.id, unit, test.sets]);
+  }
+
+  useEffect(() => {
+    void getPreferredWeightUnit().then(setUnit);
+  }, []);
 
   const current = actuals[setIndex] ?? { weight: null, reps: null, completed: false };
   const step = unit === "kg" ? 1.25 : 5;
@@ -69,7 +79,7 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
       exerciseId: test.exercise_id,
       performedAt: new Date().toISOString(),
       finalWeight: weightKg,
-      répétitions: lastCompleted.reps,
+      repetitions: lastCompleted.reps,
       weightUnit: "kg",
       estimated1rm: estimateKg,
       formula: "Brzycki",
@@ -89,10 +99,10 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
         <header className="page-heading"><span className="eyebrow">Test terminé</span><h1 className="h1">{test.name}</h1></header>
         <section className="card card-pad card-elevated stack" style={{ minHeight: "54dvh", justifyContent: "space-between" }}>
           <div className="workout-index workout-index-accent" style={{ width: 64, height: 64, borderRadius: 22 }}><Trophy size={28} /></div>
-          <div><span className="caption">Estimated 1RM - Brzycki</span><div className="rest-clock" style={{ fontSize: "clamp(4rem, 18vw, 7rem)", marginTop: 8 }}>{visibleEstimate?.toFixed(1) ?? "--"}</div><div className="h2">{visibleEstimate ? unit : ""}</div><p className="small muted">Il s'agit d'une estimation calculee a partir de la derniere serie renseignee, pas d'un 1RM mesure.</p></div>
+          <div><span className="caption">Estimated 1RM - Brzycki</span><div className="rest-clock" style={{ fontSize: "clamp(4rem, 18vw, 7rem)", marginTop: 8 }}>{visibleEstimate?.toFixed(1) ?? "--"}</div><div className="h2">{visibleEstimate ? unit : ""}</div><p className="small muted">Il s’agit d’une estimation calculee a partir de la derniere serie renseignee, pas d’un 1RM mesure.</p></div>
           <button type="button" className="button button-secondary" onClick={() => { setSavedResult(null); setSetIndex(0); setActuals(test.sets.map((set) => ({
             weight: set.weight === null ? null : displayWeight(set.weight, set.weight_unit ?? "kg", unit).value,
-            reps: set.répétitions,
+            reps: set.repetitions,
             completed: false,
           }))); }}><RotateCcw size={18} /> Refaire le test</button>
         </section>
@@ -133,9 +143,9 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
         <button type="button" className="button button-secondary" onClick={() => setSetIndex((value) => Math.min(test.sets.length - 1, value + 1))} disabled={setIndex === test.sets.length - 1}>Suivant <ChevronRight size={18} /></button>
       </div>
 
-      {completedCount === test.sets.length ? <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => void finishTest()}><Trophy size={19} /> Calculer l'Estimated 1RM</button> : null}
+      {completedCount === test.sets.length ? <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => void finishTest()}><Trophy size={19} /> Calculer l’Estimated 1RM</button> : null}
 
-      {restTarget ? <RestTimer targetEndTime={restTarget} nextLabel={`Serie ${Math.min(test.sets.length, setIndex + 1)} - ${test.name}`} onChangeTarget={setRestTarget} onDone={() => setRestTarget(null)} /> : null}
+      {restTarget ? <RestTimer key={restTarget} targetEndTime={restTarget} nextLabel={`Serie ${Math.min(test.sets.length, setIndex + 1)} - ${test.name}`} onChangeTarget={setRestTarget} onDone={() => setRestTarget(null)} /> : null}
     </div>
   );
 }
