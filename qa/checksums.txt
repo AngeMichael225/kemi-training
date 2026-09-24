@@ -1,0 +1,6 @@
+Workbook source SHA256:
+3667b90d2e909a3b3df51f525b875c51c97f34f4ba866080afcbcdaf60115d81  data/source/Training Routine - KEMI S.xlsx
+
+Normalized seed SHA256:
+9e240e5219c4079fe58080b9bad6c72aff57745871c5f47df0e324bd9cb4309a  seed/kemi-training-program.json
+70c3e294371e3abffd371263d5708d3aeb2a83085361d0ef04768f594bcd1694  seed/import-report.json

@@ -1,0 +1,19 @@
+PASS - four workbook weeks 
+PASS - twelve workouts 12
+PASS - 140 workout items 140
+PASS - 33 exercises 33
+PASS - 27 media records 27
+PASS - 3 strength tests 3
+PASS - all workout ids unique 
+PASS - all exercises resolve 
+PASS - source provenance retained 
+PASS - coach notes retained 
+PASS - direct media retained 
+PASS - external references retained 
+PASS - program contradiction documented 
+PASS - deadlift missing loads documented 
+PASS - Brzycki source formula present 
+PASS - cardio durations normalized 
+PASS - report counts match seed 
+PASS - generated ids are UUIDs 
+PASS: 18 seed integrity checks.

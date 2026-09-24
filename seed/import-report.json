@@ -1,0 +1,74 @@
+{
+  "source": "Training Routine - KEMI S.xlsx",
+  "sheet_count": 7,
+  "week_count": 4,
+  "workout_day_count": 12,
+  "workout_item_count": 140,
+  "exercise_count": 33,
+  "media_count": 27,
+  "direct_media_count": 10,
+  "external_reference_count": 17,
+  "strength_test_count": 3,
+  "anomalies": [
+    {
+      "code": "AMBIGUOUS_UNIT",
+      "severity": "medium",
+      "message": "Load has a number but no explicit unit in Week 4 row 17.",
+      "source_sheet": "Week 4",
+      "source_cell": "E17",
+      "source_value": 20.0
+    },
+    {
+      "code": "PROGRAM_LENGTH_CONTRADICTION",
+      "severity": "high",
+      "message": "Dashboard title says 12 weeks, while phase ranges extend through week 13.",
+      "source_sheet": "🏅 Dashboard",
+      "source_cell": "A1;B25:B27",
+      "source_value": {
+        "title": "LOSE FAT • KEMI • PROGRAMME 12 SEMAINES",
+        "phase_ranges": [
+          "Sem 1–4",
+          "Sem 5–9",
+          "Sem 10–13"
+        ]
+      }
+    },
+    {
+      "code": "ONLY_FOUR_WEEK_SHEETS",
+      "severity": "high",
+      "message": "Only Week 1 through Week 4 worksheets are present even though later phases are described.",
+      "source_sheet": null,
+      "source_cell": null,
+      "source_value": [
+        "Week 1",
+        "Week 2",
+        "Week 3",
+        "Week 4"
+      ]
+    },
+    {
+      "code": "BACK_SQUAT_SET_2_TEXT_MATH",
+      "severity": "medium",
+      "message": "Back Squat set 2 says 30 kg but also says 20 kg bar plus two 5 kg plates on each side, which would total 40 kg.",
+      "source_sheet": "TESTS",
+      "source_cell": "B10",
+      "source_value": "30 kg = Barre + 2 disques de 5kg de chaque"
+    },
+    {
+      "code": "DEADLIFT_TEST_WEIGHTS_MISSING",
+      "severity": "medium",
+      "message": "Deadlift test includes reps and rest but no prescribed loads.",
+      "source_sheet": "TESTS",
+      "source_cell": "B36:B41",
+      "source_value": null
+    },
+    {
+      "code": "WEEK_2_LOADS_MISSING",
+      "severity": "medium",
+      "message": "Week 2 retains prescriptions and coaching notes but most load cells are blank.",
+      "source_sheet": "Week 2",
+      "source_cell": "E15:E60",
+      "source_value": null
+    }
+  ]
+}

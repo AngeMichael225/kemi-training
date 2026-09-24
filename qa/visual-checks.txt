@@ -1,0 +1,6 @@
+today-430x932.png: no_horizontal_overflow=True touch_targets=True
+today-375x667.png: no_horizontal_overflow=True touch_targets=True
+today-412x915.png: no_horizontal_overflow=True touch_targets=True
+today-768x1024.png: no_horizontal_overflow=True touch_targets=True
+today-1440x900.png: no_horizontal_overflow=True touch_targets=True
+workout-430x932.png: no_horizontal_overflow=True touch_targets=True

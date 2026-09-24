@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+INPUT=${1:-"data/source/Training Routine - KEMI S.xlsx"}
+OUTPUT=${2:-"seed/kemi-training-program.json"}
+REPORT=${3:-"seed/import-report.json"}
+exec python scripts/import_training_xlsx.py "$INPUT" "$OUTPUT" --report "$REPORT"
