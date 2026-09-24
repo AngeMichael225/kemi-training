@@ -1,0 +1,12 @@
+---
+description: Branch, commit, and release flow
+alwaysApply: true
+---
+
+# Git and release
+
+- Do not commit directly on `main`. One branch per wave.
+- Commit only the files for that wave. No secrets, no `.env.local`.
+- Open a pull request. Wait for CI. Do not merge it yourself unless asked.
+- Preview deployments are allowed. Production deploy is not, unless the user explicitly asks.
+- Vercel install uses `pnpm install --frozen-lockfile`.

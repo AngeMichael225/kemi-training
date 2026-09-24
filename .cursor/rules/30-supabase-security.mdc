@@ -1,0 +1,14 @@
+---
+description: Supabase RLS, auth ownership, and secrets
+globs: supabase/**/*,src/lib/supabase/**/*,src/app/api/**/*.ts,scripts/seed-supabase.ts
+alwaysApply: false
+---
+
+# Supabase security
+
+- Row Level Security stays enabled. Do not disable it for local convenience.
+- A user reads and writes only their own athlete rows (`auth.uid()` / `athlete_id`).
+- `SUPABASE_SERVICE_ROLE_KEY` is server/seed only. Never `NEXT_PUBLIC_*`, never a Client Component.
+- Schema changes go through a new file in `supabase/migrations/`. Do not edit applied migrations in place.
+- `exercise-media` stays a private bucket. Object paths stay prefixed with the user id.
+- Local `supabase db reset` must never use `--linked`.

@@ -10,7 +10,7 @@ export function CardioTracker({ item, onComplete }: { item: WorkoutItem; onCompl
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [accumulated, setAccumulated] = useState(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   const frame = useRef(0);
 
   useEffect(() => {

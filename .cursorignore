@@ -1,0 +1,13 @@
+.env
+.env.local
+.env.*.local
+.vercel/
+.next/
+playwright-report/
+test-results/
+coverage/
+node_modules/
+.venv/
+supabase/.temp/
+supabase/.branches/
+*.tsbuildinfo

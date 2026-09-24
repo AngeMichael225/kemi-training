@@ -42,7 +42,7 @@ export function TodayOverview({ week, requestedWeek, maxAvailableWeek }: { week:
       {requestedWeek > maxAvailableWeek ? (
         <div className="coach-tip">
           <strong>Programme source</strong>
-          Les feuilles disponibles s'arretent a la semaine {maxAvailableWeek}. L'app affiche la derniere semaine importee sans inventer la suite.
+          Les feuilles disponibles s’arretent a la semaine {maxAvailableWeek}. L’app affiche la derniere semaine importee sans inventer la suite.
         </div>
       ) : null}
 

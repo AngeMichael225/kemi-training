@@ -11,14 +11,14 @@ export default function PlanPage() {
     <div className="page-stack">
       <header className="page-heading">
         <span className="eyebrow">Programme</span>
-        <h1 className="h1">Ton plan, sans le bruit d'Excel.</h1>
-        <p className="muted" style={{ margin: 0 }}>Toutes les semaines actuellement presentes dans le classeur, conservees telles qu'elles ont ete prescrites.</p>
+        <h1 className="h1">Ton plan, sans le bruit d’Excel.</h1>
+        <p className="muted" style={{ margin: 0 }}>Toutes les semaines actuellement presentes dans le classeur, conservees telles qu’elles ont ete prescrites.</p>
       </header>
 
       {highAnomalies.length ? (
         <div className="card card-pad row" style={{ alignItems: "flex-start" }}>
           <TriangleAlert size={20} style={{ color: "var(--warning)", flex: "0 0 auto", marginTop: 2 }} />
-          <div><strong>Le fichier source est partiel</strong><p className="caption" style={{ margin: "5px 0 0" }}>Le Dashboard annonce 12 semaines, les phases vont jusqu'a 13, mais seules les semaines 1 a 4 sont presentes. Aucune semaine manquante n'a ete inventee.</p></div>
+          <div><strong>Le fichier source est partiel</strong><p className="caption" style={{ margin: "5px 0 0" }}>Le Dashboard annonce 12 semaines, les phases vont jusqu’a 13, mais seules les semaines 1 a 4 sont presentes. Aucune semaine manquante n’a ete inventee.</p></div>
         </div>
       ) : null}
 

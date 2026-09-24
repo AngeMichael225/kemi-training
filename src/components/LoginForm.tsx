@@ -32,7 +32,7 @@ export function LoginForm({ configured }: { configured: boolean }) {
   if (!configured) {
     return (
       <div className="stack">
-        <div className="coach-tip"><strong><WifiOff size={13} style={{ display: "inline", marginRight: 5 }} /> Mode local</strong>Supabase n'est pas configure dans cet environnement. Toutes les fonctions workout restent disponibles localement pour la revue.</div>
+        <div className="coach-tip"><strong><WifiOff size={13} style={{ display: "inline", marginRight: 5 }} /> Mode local</strong>Supabase n’est pas configure dans cet environnement. Toutes les fonctions workout restent disponibles localement pour la revue.</div>
         <Link href="/today" className="button button-primary">Continuer en mode local <ArrowRight size={18} /></Link>
       </div>
     );

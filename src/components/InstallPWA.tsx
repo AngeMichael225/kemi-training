@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Download, Share2, Smartphone } from "lucide-react";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
 export function InstallPWA() {
   const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null);
-  const [standalone, setStandalone] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  const standalone = useSyncExternalStore(() => () => undefined, isStandalone, () => false) || installed;
 
   useEffect(() => {
-    setStandalone(window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true);
     const handler = (event: Event) => {
       event.preventDefault();
       setPrompt(event as InstallPromptEvent);
@@ -23,7 +27,7 @@ export function InstallPWA() {
     if (!prompt) return;
     await prompt.prompt();
     const choice = await prompt.userChoice;
-    if (choice.outcome === "accepted") setStandalone(true);
+    if (choice.outcome === "accepted") setInstalled(true);
     setPrompt(null);
   }
 
@@ -32,7 +36,7 @@ export function InstallPWA() {
   return (
     <div className="coach-tip">
       <strong><Share2 size={13} style={{ display: "inline", marginRight: 5 }} /> Installation iPhone</strong>
-      Dans Safari, utilise Partager puis Ajouter à l'écran d'accueil. Le mode standalone respecte les safe areas iOS.
+      Dans Safari, utilise Partager puis Ajouter à l’écran d’accueil. Le mode standalone respecte les safe areas iOS.
     </div>
   );
 }

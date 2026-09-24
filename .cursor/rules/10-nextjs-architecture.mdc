@@ -1,0 +1,15 @@
+---
+description: Next.js 16 App Router boundaries
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Next.js architecture
+
+- App Router only. Server Components are the default.
+- Add `"use client"` only for state, events, IndexedDB, timers, or browser APIs.
+- Keep `src/proxy.ts` as the request gate. Do not add `middleware.ts`.
+- `params`, `searchParams`, and `cookies()` are async. Await them.
+- Use `next/image` for remote exercise media and `next/font` for fonts already in the root layout.
+- Do not pass the Supabase service role into Client Components.
+- Do not add `--turbopack` to scripts; Next.js 16 already uses it for `next dev`.

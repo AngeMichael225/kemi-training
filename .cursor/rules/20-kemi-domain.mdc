@@ -1,0 +1,14 @@
+---
+description: KEMI training domain and workbook provenance
+globs: src/lib/**/*.{ts,tsx},scripts/**/*,seed/**/*,data/**/*
+alwaysApply: false
+---
+
+# KEMI domain
+
+- Workouts, weeks, items, exercises, media, and strength tests come from `data/source` via `scripts/import_training_xlsx.py`.
+- Preserve `source_sheet`, `source_cell`, and `source_url` when present.
+- Units stay source-faithful. Display conversion uses `1 kg = 2.2046 lb`, then gym rounding.
+- Estimated 1RM is Brzycki and must be labeled Estimated 1RM.
+- Coach Tips are imported text, not generated advice.
+- Session logs persist in IndexedDB and must survive refresh. Do not drop a completed set on navigation.

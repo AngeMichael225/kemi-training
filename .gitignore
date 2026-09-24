@@ -12,3 +12,8 @@ test-results
 *.log
 
 *.tsbuildinfo
+.venv/
+__pycache__/
+*.pyc
+supabase/.temp/
+supabase/.branches/

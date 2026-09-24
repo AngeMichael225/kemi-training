@@ -1,5 +1,7 @@
 # KEMI Training - Implementation Plan
 
+The historical phases below describe the first source pass. The active sequence is `docs/IMPLEMENTATION_ROADMAP_V2.md`.
+
 ## Phase 0 - Discovery
 Completed: workbook structure, formulas, hyperlinks, source anomalies and visual reference were inspected.
 

@@ -1,0 +1,22 @@
+---
+description: Required quality gates
+globs: tests/**/*.{ts,tsx},playwright.config.ts,vitest.config.ts
+alwaysApply: false
+---
+
+# Testing and quality
+
+Gates, in order:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:e2e
+```
+
+- `pnpm typecheck` runs `next typegen` then `tsc --noEmit`. A syntax transpile is not a typecheck.
+- Vitest covers `tests/unit` only. Playwright covers `tests/e2e` against the running app.
+- `qa/preview` is a static mirror, not a Playwright pass.
+- WebKit runs as the `webkit-compact-iphone` project (375×667).

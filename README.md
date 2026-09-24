@@ -23,12 +23,13 @@ Le snapshot actuel contient 4 semaines, 12 seances, 140 items, 33 exercices, 27 
 
 ## Installation
 
-Prérequis : Node.js 22+, pnpm 10+, Python 3.11+.
+Prérequis : Node.js 24, pnpm 10.17.1, Python 3.11+ (3.14 vérifié localement).
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
+python -m pip install -r requirements-dev.txt
 cp .env.example .env.local
-pnpm import-training-xlsx
+pnpm import:training
 pnpm dev
 ```
 
@@ -124,7 +125,7 @@ pnpm test:e2e
 pnpm test:e2e:webkit
 ```
 
-Les projets Playwright couvrent : 430 x 932, 375 x 667 sous WebKit, 412 x 915 Android, 768 x 1024 tablette et 1440 x 900 desktop.
+Les projets Playwright couvrent : 430 x 932, 375 x 667 sous WebKit (`webkit-compact-iphone`), 412 x 915 Android, 768 x 1024 tablette et 1440 x 900 desktop. `pnpm test:e2e:webkit` lance ce projet WebKit.
 
 Le rapport de la passe effectuee dans l'environnement de generation se trouve dans `qa/RESULTS.md`. Cet environnement n'autorisait pas l'acces au registre npm, donc l'installation des dependances et, par consequent, le vrai `next build` et Playwright n'ont pas pu y etre executes. Les scripts sont prets a etre lances dans un environnement disposant du registre npm.
 

@@ -79,10 +79,11 @@ export function SessionRunner({
   const itemTargetSets = item ? targetSets(item) : 1;
   const setNumber = Math.min(itemTargetSets, itemLogs.length + 1);
 
+  const exerciseId = item?.exercise_id;
   useEffect(() => {
-    if (!item) return;
-    void getLastPerformance(item.exercise_id).then(setPrevious);
-  }, [item?.id]);
+    if (!exerciseId) return;
+    void getLastPerformance(exerciseId).then(setPrevious);
+  }, [exerciseId]);
 
   const persist = useCallback(async (next: LocalWorkoutSession) => {
     const stamped = { ...next, updatedAt: new Date().toISOString() };
@@ -213,14 +214,14 @@ export function SessionRunner({
       <section className="card card-pad">
         {item.item_kind === "strength_test" ? (
           <div className="stack">
-            <div><span className="eyebrow" style={{ fontSize: ".64rem" }}>Protocole special</span><h2 className="h2" style={{ marginTop: 5 }}>Test de force</h2><p className="small muted">Le protocole du classeur est disponible dans l'écran Tests. Termine-le puis reviens marquer ce bloc comme complete.</p></div>
+            <div><span className="eyebrow" style={{ fontSize: ".64rem" }}>Protocole special</span><h2 className="h2" style={{ marginTop: 5 }}>Test de force</h2><p className="small muted">Le protocole du classeur est disponible dans l’écran Tests. Termine-le puis reviens marquer ce bloc comme complete.</p></div>
             <Link href={`/tests?test=${item.strength_test_ref ?? ""}`} className="button button-secondary"><ClipboardCheck size={18} /> Ouvrir le test</Link>
             <button type="button" className="button button-primary" onClick={() => void markStrengthTestDone()}><CheckCircle2 size={18} /> Test complete</button>
           </div>
         ) : item.item_kind === "cardio" ? (
           <CardioTracker item={item} onComplete={(durationSec) => void completeItem({ reps: null, weight: null, unit: null, durationSec })} />
         ) : (
-          <SetTracker item={item} setNumber={setNumber} totalSets={itemTargetSets} preferredUnit={preferredUnit} previous={previous} onComplete={(data) => void completeItem(data)} />
+          <SetTracker key={`${item.id}-${setNumber}-${preferredUnit}`} item={item} setNumber={setNumber} totalSets={itemTargetSets} preferredUnit={preferredUnit} previous={previous} onComplete={(data) => void completeItem(data)} />
         )}
       </section>
 
@@ -258,7 +259,7 @@ export function SessionRunner({
       ) : null}
 
       {session.restTargetEndTime ? (
-        <RestTimer targetEndTime={session.restTargetEndTime} nextLabel={nextLabel} onChangeTarget={changeRestTarget} onDone={clearRest} />
+        <RestTimer key={session.restTargetEndTime} targetEndTime={session.restTargetEndTime} nextLabel={nextLabel} onChangeTarget={changeRestTarget} onDone={clearRest} />
       ) : null}
     </div>
   );

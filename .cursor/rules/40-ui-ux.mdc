@@ -1,0 +1,14 @@
+---
+description: Mobile training UI, icons, and motion
+globs: src/app/**/*.tsx,src/components/**/*.tsx,src/app/globals.css
+alwaysApply: false
+---
+
+# UI and UX
+
+- Design for a dark premium training app, not a SaaS dashboard.
+- Touch targets are at least 44×44. Respect safe-area insets and the home indicator.
+- Keep the current tokens (lime accent, dark surfaces) until the visual-system wave.
+- One icon family only. Wave 01 target is Flaticon UIcons Rounded Regular. Do not mix Lucide weights with a second set.
+- Lottie only for workout complete, rest complete, syncing, and an empty progress state. Ship local files. Honor `prefers-reduced-motion`.
+- No generic AI gradients. No medical advice in the interface.
