@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { MotionMoment } from "@/components/motion/MotionMoment";
 import type {
@@ -10,10 +10,11 @@ import type {
   ProgramWeekSeed,
   SessionSetLog,
   WorkoutDaySeed,
-  WorkoutItem,
 } from "@/lib/training-model";
 import { flattenWorkout } from "@/lib/training-data";
 import { getLastPerformance, getPreferredWeightUnit, getSession, saveSession } from "@/lib/offline-db";
+import { applySetCompletion, resolveLoadedSession, targetSets, type SetCompletionInput } from "@/lib/session-mutations";
+import { createSessionStore, type SessionStore } from "@/lib/session-persistence";
 import { convertWeight, type WeightUnit } from "@/lib/units";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
 import { CoachTip } from "@/components/CoachTip";
@@ -22,9 +23,20 @@ import { CardioTracker } from "@/components/CardioTracker";
 import { RestTimer } from "@/components/RestTimer";
 import { formatDuration } from "@/lib/format";
 
-function targetSets(item: WorkoutItem): number {
-  if (item.item_kind === "cardio" || item.item_kind === "strength_test") return 1;
-  return Math.max(1, item.prescribed_sets ?? 1);
+function UnavailableSession({ detail }: { detail: string }) {
+  return (
+    <div className="page-stack" style={{ paddingTop: 28 }}>
+      <div className="card card-pad stack">
+        <span className="eyebrow">Séance</span>
+        <h1 className="h1">Séance introuvable</h1>
+        <p className="muted">{detail}</p>
+        <div className="stack">
+          <Link href="/today" className="button button-primary">Retour à l&apos;accueil</Link>
+          <Link href="/plan" className="button button-secondary">Voir le programme</Link>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function SessionRunner({
@@ -42,35 +54,72 @@ export function SessionRunner({
   const [session, setSession] = useState<LocalWorkoutSession | null>(null);
   const [preferredUnit, setPreferredUnit] = useState<WeightUnit>("kg");
   const [previous, setPrevious] = useState<SessionSetLog | undefined>();
-  const [ready, setReady] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "found" | "missing" | "mismatch">("loading");
+  const [persistError, setPersistError] = useState<string | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const requestKey = `${sessionId}:${day.id}`;
+  const [requestKeySeen, setRequestKeySeen] = useState(requestKey);
+  const storeRef = useRef<SessionStore<LocalWorkoutSession> | null>(null);
+  const mountedRef = useRef(true);
+
+  if (requestKeySeen !== requestKey) {
+    setRequestKeySeen(requestKey);
+    setLoadState("loading");
+    setSession(null);
+    setPersistError(null);
+  }
 
   useEffect(() => {
-    void Promise.all([getSession(sessionId), getPreferredWeightUnit()]).then(([stored, unit]) => {
-      setPreferredUnit(unit);
-      if (stored) {
-        setSession(stored);
-      } else {
-        const now = new Date().toISOString();
-        setSession({
-          id: sessionId,
-          workoutDayId: day.id,
-          workoutTitle: `${week.name} - ${day.title}`,
-          weekNumber: week.week_number,
-          dayNumber: day.day_number,
-          startedAt: now,
-          completedAt: null,
-          status: "active",
-          currentItemIndex: 0,
-          notes: "",
-          exerciseNotes: {},
-          setLogs: [],
-          restTargetEndTime: null,
-          updatedAt: now,
-        });
-      }
-      setReady(true);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const commit = useCallback((mutator: (current: LocalWorkoutSession) => LocalWorkoutSession) => {
+    const store = storeRef.current;
+    if (!store) return;
+    const persisted = store.update(mutator);
+    setSession(store.current);
+    void persisted.then(() => {
+      if (mountedRef.current) setPersistError(null);
+    }, (error: unknown) => {
+      if (!mountedRef.current) return;
+      setPersistError(error instanceof Error ? error.message : "La séance n’a pas pu être enregistrée.");
     });
-  }, [sessionId, day.id, day.day_number, day.title, week.name, week.week_number]);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    storeRef.current = null;
+    void (async () => {
+      try {
+        const [stored, unit] = await Promise.all([getSession(sessionId), getPreferredWeightUnit()]);
+        if (cancelled) return;
+        setPreferredUnit(unit);
+        const resolved = resolveLoadedSession(stored, day.id);
+        if (resolved.state !== "found") {
+          setSession(null);
+          setLoadState(resolved.state);
+          return;
+        }
+        storeRef.current = createSessionStore({
+          initial: resolved.session,
+          write: (snapshot) => saveSession(snapshot),
+        });
+        setSession(resolved.session);
+        setLoadState("found");
+      } catch (error) {
+        if (cancelled) return;
+        setSession(null);
+        setPersistError(error instanceof Error ? error.message : "La séance n’a pas pu être lue.");
+        setLoadState("missing");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, day.id]);
 
   const currentIndex = Math.min(session?.currentItemIndex ?? 0, Math.max(0, sequence.length - 1));
   const current = sequence[currentIndex];
@@ -86,12 +135,6 @@ export function SessionRunner({
     void getLastPerformance(exerciseId).then(setPrevious);
   }, [exerciseId]);
 
-  const persist = useCallback(async (next: LocalWorkoutSession) => {
-    const stamped = { ...next, updatedAt: new Date().toISOString() };
-    setSession(stamped);
-    await saveSession(stamped);
-  }, []);
-
   const completedItemCount = useMemo(() => {
     if (!session) return 0;
     return sequence.filter(({ item: candidate }) => {
@@ -103,57 +146,51 @@ export function SessionRunner({
   const allComplete = sequence.length > 0 && completedItemCount === sequence.length;
 
   const clearRest = useCallback(() => {
-    if (!session) return;
-    void persist({ ...session, restTargetEndTime: null });
-  }, [persist, session]);
+    commit((current) => ({ ...current, restTargetEndTime: null }));
+  }, [commit]);
 
   const changeRestTarget = useCallback((target: number | null) => {
-    if (!session) return;
-    void persist({ ...session, restTargetEndTime: target });
-  }, [persist, session]);
+    commit((current) => ({ ...current, restTargetEndTime: target }));
+  }, [commit]);
 
-  async function completeItem(data: { reps: number | null; weight: number | null; unit: WeightUnit | null; durationSec: number | null }) {
-    if (!session || !item) return;
-    const nextLog: SessionSetLog = {
-      id: crypto.randomUUID(),
-      workoutItemId: item.id,
-      exerciseId: item.exercise_id,
-      setNumber,
-      targetReps: item.prescribed_reps,
-      actualReps: data.reps,
-      targetWeight: item.prescribed_weight,
-      targetWeightUnit: item.weight_unit,
-      actualWeight: data.weight,
-      weightUnit: data.unit,
-      durationSec: data.durationSec,
-      rpe: null,
-      completedAt: new Date().toISOString(),
-    };
-    const logs = [...session.setLogs, nextLog];
-    const completesItem = itemLogs.length + 1 >= itemTargetSets;
-    const nextIndex = completesItem ? Math.min(currentIndex + 1, sequence.length - 1) : currentIndex;
-    const willCompleteWorkout = completesItem && completedItemCount + 1 >= sequence.length;
-    const restTarget = item.rest_seconds && item.rest_seconds > 0 && !willCompleteWorkout ? Date.now() + item.rest_seconds * 1000 : null;
-    await persist({ ...session, setLogs: logs, currentItemIndex: nextIndex, restTargetEndTime: restTarget });
+  function completeItem(data: SetCompletionInput) {
+    if (!item) return;
+    const captured = item;
+    commit((current) => applySetCompletion(current, captured, sequence, data));
   }
 
-  async function markStrengthTestDone() {
-    await completeItem({ reps: null, weight: null, unit: null, durationSec: null });
+  function markStrengthTestDone() {
+    completeItem({ reps: null, weight: null, unit: null, durationSec: null });
   }
 
-  async function move(delta: number) {
-    if (!session) return;
-    const nextIndex = Math.max(0, Math.min(sequence.length - 1, currentIndex + delta));
-    await persist({ ...session, currentItemIndex: nextIndex, restTargetEndTime: null });
+  function move(delta: number) {
+    commit((current) => {
+      const index = Math.max(0, Math.min(sequence.length - 1, current.currentItemIndex));
+      const nextIndex = Math.max(0, Math.min(sequence.length - 1, index + delta));
+      return { ...current, currentItemIndex: nextIndex, restTargetEndTime: null };
+    });
   }
 
-  async function finishWorkout() {
-    if (!session) return;
+  function finishWorkout() {
     const now = new Date().toISOString();
-    await persist({ ...session, status: "completed", completedAt: now, restTargetEndTime: null, currentItemIndex: sequence.length - 1 });
+    commit((current) => ({
+      ...current,
+      status: "completed",
+      completedAt: current.completedAt ?? now,
+      restTargetEndTime: null,
+      currentItemIndex: Math.max(0, sequence.length - 1),
+    }));
   }
 
-  if (!ready || !session || !item || !section) {
+  if (loadState === "missing") {
+    return <UnavailableSession detail="Cette séance n’existe plus sur cet appareil." />;
+  }
+
+  if (loadState === "mismatch") {
+    return <UnavailableSession detail="Cette séance ne correspond pas à cet entraînement." />;
+  }
+
+  if (loadState !== "found" || !session || !item || !section) {
     return <div className="card card-pad" style={{ marginTop: 60 }}>Chargement de la séance...</div>;
   }
 
@@ -174,6 +211,7 @@ export function SessionRunner({
             <div className="stat-cell"><strong>{session.setLogs.length}</strong><span>series / blocs</span></div>
             <div className="stat-cell"><strong>{volumeKg ? `${Math.round(volumeKg)} kg` : "--"}</strong><span>volume calc.</span></div>
           </div>
+          {persistError ? <p className="caption" role="alert">{persistError}</p> : null}
           {session.notes ? <div className="coach-tip"><strong>Ta note</strong>{session.notes}</div> : null}
           <div className="grid-2"><Link href="/today" className="button button-secondary"><Icon name="arrow-left" size={18} /> Accueil</Link><Link href="/progress" className="button button-primary">Progression <Icon name="arrow-right" size={18} /></Link></div>
         </div>
@@ -217,16 +255,18 @@ export function SessionRunner({
           <div className="stack">
             <div><span className="eyebrow" style={{ fontSize: ".64rem" }}>Protocole special</span><h2 className="h2" style={{ marginTop: 5 }}>Test de force</h2><p className="small muted">Le protocole du classeur est disponible dans l’écran Tests. Termine-le puis reviens marquer ce bloc comme complete.</p></div>
             <Link href={`/tests?test=${item.strength_test_ref ?? ""}`} className="button button-secondary"><Icon name="clipboard-list-check" size={18} /> Ouvrir le test</Link>
-            <button type="button" className="button button-primary" onClick={() => void markStrengthTestDone()}><Icon name="check-circle" size={18} /> Test complete</button>
+            <button type="button" className="button button-primary" onClick={() => markStrengthTestDone()}><Icon name="check-circle" size={18} /> Test complete</button>
           </div>
         ) : item.item_kind === "cardio" ? (
-          <CardioTracker item={item} onComplete={(durationSec) => void completeItem({ reps: null, weight: null, unit: null, durationSec })} />
+          <CardioTracker item={item} onComplete={(durationSec) => completeItem({ reps: null, weight: null, unit: null, durationSec })} />
         ) : (
-          <SetTracker key={`${item.id}-${setNumber}-${preferredUnit}`} item={item} setNumber={setNumber} totalSets={itemTargetSets} preferredUnit={preferredUnit} previous={previous} onComplete={(data) => void completeItem(data)} />
+          <SetTracker key={`${item.id}-${setNumber}-${preferredUnit}`} item={item} setNumber={setNumber} totalSets={itemTargetSets} preferredUnit={preferredUnit} previous={previous} onComplete={(data) => completeItem(data)} />
         )}
       </section>
 
-      <details className="card card-pad">
+      {persistError ? <p className="caption" role="alert">{persistError}</p> : null}
+
+      <details className="card card-pad" open={notesOpen} onToggle={(event) => setNotesOpen(event.currentTarget.open)}>
         <summary className="row-between" style={{ cursor: "pointer", minHeight: 44 }}><strong>Notes</strong><span className="caption">optionnel</span></summary>
         <div className="stack" style={{ marginTop: 14 }}>
           <label className="label">Sur cet exercice
@@ -234,8 +274,14 @@ export function SessionRunner({
               className="input textarea"
               value={session.exerciseNotes?.[item.id] ?? ""}
               placeholder="Commentaire personnel sur ce mouvement..."
-              onChange={(event) => setSession({ ...session, exerciseNotes: { ...(session.exerciseNotes ?? {}), [item.id]: event.target.value } })}
-              onBlur={(event) => void persist({ ...session, exerciseNotes: { ...(session.exerciseNotes ?? {}), [item.id]: event.target.value } })}
+              onChange={(event) => {
+                const value = event.target.value;
+                const itemId = item.id;
+                commit((current) => ({
+                  ...current,
+                  exerciseNotes: { ...(current.exerciseNotes ?? {}), [itemId]: value },
+                }));
+              }}
             />
           </label>
           <label className="label">Sur la séance
@@ -243,20 +289,22 @@ export function SessionRunner({
               className="input textarea"
               value={session.notes}
               placeholder="Commentaire global de séance..."
-              onChange={(event) => setSession({ ...session, notes: event.target.value })}
-              onBlur={(event) => void persist({ ...session, notes: event.target.value })}
+              onChange={(event) => {
+                const value = event.target.value;
+                commit((current) => ({ ...current, notes: value }));
+              }}
             />
           </label>
         </div>
       </details>
 
       <div className="row-between">
-        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => void move(-1)} disabled={currentIndex === 0}><Icon name="angle-small-left" size={18} /> Précédent</button>
-        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => void move(1)} disabled={currentIndex === sequence.length - 1}>Suivant <Icon name="angle-small-right" size={18} /></button>
+        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => move(-1)} disabled={currentIndex === 0}><Icon name="angle-small-left" size={18} /> Précédent</button>
+        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => move(1)} disabled={currentIndex === sequence.length - 1}>Suivant <Icon name="angle-small-right" size={18} /></button>
       </div>
 
       {allComplete ? (
-        <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => void finishWorkout()}><Icon name="flag" size={19} /> Terminer la séance</button>
+        <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => finishWorkout()}><Icon name="flag" size={19} /> Terminer la séance</button>
       ) : null}
 
       {session.restTargetEndTime ? (
