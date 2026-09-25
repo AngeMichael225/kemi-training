@@ -2,15 +2,15 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Dumbbell, House, LibraryBig, TrendingUp, UserRound } from "lucide-react";
+import { Icon, type UIconName } from "@/components/icons/Icon";
 import { SyncStatus } from "@/components/SyncStatus";
 
-const items = [
-  { href: "/today", label: "Aujourd'hui", icon: House },
-  { href: "/plan", label: "Programme", icon: Dumbbell },
-  { href: "/progress", label: "Progression", icon: TrendingUp },
-  { href: "/exercises", label: "Exercices", icon: LibraryBig },
-  { href: "/profile", label: "Profil", icon: UserRound },
+const items: { href: string; label: string; icon: UIconName }[] = [
+  { href: "/today", label: "Aujourd'hui", icon: "home" },
+  { href: "/plan", label: "Programme", icon: "calendar" },
+  { href: "/progress", label: "Progression", icon: "chart-line-up" },
+  { href: "/exercises", label: "Exercices", icon: "list" },
+  { href: "/profile", label: "Profil", icon: "user" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -22,11 +22,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!hideNav ? (
         <nav className="bottom-nav" aria-label="Navigation principale">
           <div className="bottom-nav-inner">
-            {items.map(({ href, label, icon: Icon }) => {
+            {items.map(({ href, label, icon }) => {
               const active = pathname === href || (href !== "/today" && pathname.startsWith(`${href}/`));
               return (
                 <Link key={href} href={href} className="nav-link" data-active={active} aria-current={active ? "page" : undefined}>
-                  <Icon size={19} strokeWidth={2.3} aria-hidden="true" />
+                  <Icon name={icon} size={19} />
                   <span>{label}</span>
                 </Link>
               );

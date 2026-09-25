@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Cloud, CloudOff, LoaderCircle } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
+import { MotionMoment } from "@/components/motion/MotionMoment";
 import { hasSupabaseBrowserEnv } from "@/lib/env";
 import { syncPendingMutations, type SyncState } from "@/lib/sync";
 
@@ -42,11 +43,14 @@ export function SyncStatus({ compact = false }: { compact?: boolean }) {
     };
   }, [runSync]);
 
-  const Icon = state === "offline" ? CloudOff : state === "syncing" ? LoaderCircle : Cloud;
   return (
     <button type="button" className="sync-indicator" onClick={() => void runSync()} aria-label={`Etat de synchronisation: ${labels[state]}`}>
       <span className="pill" style={{ minHeight: compact ? 30 : 34, background: "rgba(17,19,21,.88)" }}>
-        <Icon size={13} className={state === "syncing" ? "animate-spin" : undefined} aria-hidden="true" />
+        {state === "syncing" ? (
+          <MotionMoment name="syncing" size={16} fallback={<Icon name="cloud" size={13} />} />
+        ) : (
+          <Icon name={state === "offline" ? "cloud-disabled" : "cloud"} size={13} />
+        )}
         {!compact ? labels[state] : state === "offline" ? "Offline" : state === "syncing" ? "Sync" : "OK"}
       </span>
     </button>

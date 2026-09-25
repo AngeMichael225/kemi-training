@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, Dumbbell, Gauge, Timer } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import type { Metadata } from "next";
 import { trainingSeed } from "@/lib/training-data";
 
@@ -16,7 +16,7 @@ export default async function WeekPage({ params }: { params: Promise<{ weekNumbe
   return (
     <div className="page-stack">
       <header className="page-heading">
-        <Link href="/plan" className="row small muted" style={{ width: "fit-content" }}><ArrowLeft size={16} /> Programme</Link>
+        <Link href="/plan" className="row small muted" style={{ width: "fit-content" }}><Icon name="arrow-left" size={16} /> Programme</Link>
         <span className="eyebrow">Semaine {week.week_number}</span>
         <h1 className="h1">Trois séances. Une lecture claire.</h1>
       </header>
@@ -28,11 +28,11 @@ export default async function WeekPage({ params }: { params: Promise<{ weekNumbe
           const tests = items.filter((item) => item.item_kind === "strength_test").length;
           return (
             <Link href={`/workout/${day.id}`} key={day.id} className="card card-pad card-elevated stack">
-              <div className="row-between"><div><span className="eyebrow" style={{ fontSize: ".64rem" }}>Jour {day.day_number}</span><h2 className="h2" style={{ marginTop: 5 }}>{day.sections.find((section) => section.section_type.includes("focus"))?.title ?? day.title}</h2></div><span className="icon-button"><ArrowRight size={18} /></span></div>
+              <div className="row-between"><div><span className="eyebrow" style={{ fontSize: ".64rem" }}>Jour {day.day_number}</span><h2 className="h2" style={{ marginTop: 5 }}>{day.sections.find((section) => section.section_type.includes("focus"))?.title ?? day.title}</h2></div><span className="icon-button"><Icon name="arrow-right" size={18} /></span></div>
               <div className="row wrap">
-                <span className="pill"><Dumbbell size={13} /> {items.length} items</span>
-                {cardio ? <span className="pill"><Timer size={13} /> cardio</span> : null}
-                {tests ? <span className="pill pill-accent"><Gauge size={13} /> test de force</span> : null}
+                <span className="pill"><Icon name="dumbbell-fitness" size={13} /> {items.length} items</span>
+                {cardio ? <span className="pill"><Icon name="stopwatch" size={13} /> cardio</span> : null}
+                {tests ? <span className="pill pill-accent"><Icon name="dashboard" size={13} /> test de force</span> : null}
               </div>
             </Link>
           );

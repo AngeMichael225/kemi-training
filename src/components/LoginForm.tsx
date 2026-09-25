@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Mail, WifiOff } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -32,8 +32,8 @@ export function LoginForm({ configured }: { configured: boolean }) {
   if (!configured) {
     return (
       <div className="stack">
-        <div className="coach-tip"><strong><WifiOff size={13} style={{ display: "inline", marginRight: 5 }} /> Mode local</strong>Supabase n’est pas configure dans cet environnement. Toutes les fonctions workout restent disponibles localement pour la revue.</div>
-        <Link href="/today" className="button button-primary">Continuer en mode local <ArrowRight size={18} /></Link>
+        <div className="coach-tip"><strong><Icon name="wifi-slash" size={13} style={{ marginRight: 5 }} /> Mode local</strong>Supabase n’est pas configure dans cet environnement. Toutes les fonctions workout restent disponibles localement pour la revue.</div>
+        <Link href="/today" className="button button-primary">Continuer en mode local <Icon name="arrow-right" size={18} /></Link>
       </div>
     );
   }
@@ -41,9 +41,9 @@ export function LoginForm({ configured }: { configured: boolean }) {
   return (
     <div className="stack">
       <label className="label">Adresse courriel
-        <div style={{ position: "relative" }}><Mail size={18} style={{ position: "absolute", left: 14, top: 16, color: "var(--text-secondary)" }} /><input className="input" type="email" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} style={{ paddingLeft: 42 }} placeholder="kemi@example.com" /></div>
+        <div style={{ position: "relative" }}><Icon name="envelope" size={18} style={{ position: "absolute", left: 14, top: 16, color: "var(--text-secondary)" }} /><input className="input" type="email" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} style={{ paddingLeft: 42 }} placeholder="kemi@example.com" /></div>
       </label>
-      <button type="button" className="button button-primary" onClick={() => void sendLink()} disabled={busy || !email}>{busy ? "Envoi..." : "Recevoir un lien magique"} <ArrowRight size={18} /></button>
+      <button type="button" className="button button-primary" onClick={() => void sendLink()} disabled={busy || !email}>{busy ? "Envoi..." : "Recevoir un lien magique"} <Icon name="arrow-right" size={18} /></button>
       {status ? <p className="small muted" role="status" style={{ margin: 0 }}>{status}</p> : null}
     </div>
   );

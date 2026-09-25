@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, Flag, TimerReset } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
+import { MotionMoment } from "@/components/motion/MotionMoment";
 import type {
   ExerciseMediaSeed,
   LocalWorkoutSession,
@@ -166,7 +167,7 @@ export function SessionRunner({
     return (
       <div className="page-stack" style={{ paddingTop: 28 }}>
         <div className="card card-pad card-elevated stack" style={{ minHeight: "62dvh", justifyContent: "space-between" }}>
-          <div className="workout-index workout-index-accent" style={{ width: 62, height: 62, borderRadius: 22 }}><CheckCircle2 size={28} /></div>
+          <MotionMoment name="workout-complete" size={88} fallback={<div className="workout-index workout-index-accent" style={{ width: 62, height: 62, borderRadius: 22 }}><Icon name="check-circle" size={28} /></div>} />
           <div><span className="eyebrow">Séance terminée</span><h1 className="display" style={{ marginTop: 10 }}>Belle séance.</h1><p className="muted">Tes donnees sont conservees localement et synchronisees lorsque le backend est disponible.</p></div>
           <div className="stat-strip">
             <div className="stat-cell"><strong>{durationMin} min</strong><span>duree</span></div>
@@ -174,7 +175,7 @@ export function SessionRunner({
             <div className="stat-cell"><strong>{volumeKg ? `${Math.round(volumeKg)} kg` : "--"}</strong><span>volume calc.</span></div>
           </div>
           {session.notes ? <div className="coach-tip"><strong>Ta note</strong>{session.notes}</div> : null}
-          <div className="grid-2"><Link href="/today" className="button button-secondary"><ArrowLeft size={18} /> Accueil</Link><Link href="/progress" className="button button-primary">Progression <ArrowRight size={18} /></Link></div>
+          <div className="grid-2"><Link href="/today" className="button button-secondary"><Icon name="arrow-left" size={18} /> Accueil</Link><Link href="/progress" className="button button-primary">Progression <Icon name="arrow-right" size={18} /></Link></div>
         </div>
       </div>
     );
@@ -189,9 +190,9 @@ export function SessionRunner({
     <div className="page-stack" style={{ paddingBottom: 28 }}>
       <header className="stack" style={{ paddingTop: 6 }}>
         <div className="row-between">
-          <Link href="/today" className="icon-button" aria-label="Quitter la séance"><ArrowLeft size={20} /></Link>
+          <Link href="/today" className="icon-button" aria-label="Quitter la séance"><Icon name="arrow-left" size={20} /></Link>
           <div style={{ textAlign: "center" }}><span className="caption">Semaine {week.week_number} - Jour {day.day_number}</span><div className="small" style={{ fontWeight: 760 }}>{progress}% terminé</div></div>
-          <span className="pill"><TimerReset size={13} /> {item.rest_raw ?? "--"}</span>
+          <span className="pill"><Icon name="stopwatch" size={13} /> {item.rest_raw ?? "--"}</span>
         </div>
         <div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
       </header>
@@ -215,8 +216,8 @@ export function SessionRunner({
         {item.item_kind === "strength_test" ? (
           <div className="stack">
             <div><span className="eyebrow" style={{ fontSize: ".64rem" }}>Protocole special</span><h2 className="h2" style={{ marginTop: 5 }}>Test de force</h2><p className="small muted">Le protocole du classeur est disponible dans l’écran Tests. Termine-le puis reviens marquer ce bloc comme complete.</p></div>
-            <Link href={`/tests?test=${item.strength_test_ref ?? ""}`} className="button button-secondary"><ClipboardCheck size={18} /> Ouvrir le test</Link>
-            <button type="button" className="button button-primary" onClick={() => void markStrengthTestDone()}><CheckCircle2 size={18} /> Test complete</button>
+            <Link href={`/tests?test=${item.strength_test_ref ?? ""}`} className="button button-secondary"><Icon name="clipboard-list-check" size={18} /> Ouvrir le test</Link>
+            <button type="button" className="button button-primary" onClick={() => void markStrengthTestDone()}><Icon name="check-circle" size={18} /> Test complete</button>
           </div>
         ) : item.item_kind === "cardio" ? (
           <CardioTracker item={item} onComplete={(durationSec) => void completeItem({ reps: null, weight: null, unit: null, durationSec })} />
@@ -250,12 +251,12 @@ export function SessionRunner({
       </details>
 
       <div className="row-between">
-        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => void move(-1)} disabled={currentIndex === 0}><ChevronLeft size={18} /> Précédent</button>
-        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => void move(1)} disabled={currentIndex === sequence.length - 1}>Suivant <ChevronRight size={18} /></button>
+        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => void move(-1)} disabled={currentIndex === 0}><Icon name="angle-small-left" size={18} /> Précédent</button>
+        <button type="button" className="button button-secondary" style={{ minWidth: 120 }} onClick={() => void move(1)} disabled={currentIndex === sequence.length - 1}>Suivant <Icon name="angle-small-right" size={18} /></button>
       </div>
 
       {allComplete ? (
-        <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => void finishWorkout()}><Flag size={19} /> Terminer la séance</button>
+        <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => void finishWorkout()}><Icon name="flag" size={19} /> Terminer la séance</button>
       ) : null}
 
       {session.restTargetEndTime ? (
