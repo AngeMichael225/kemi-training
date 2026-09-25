@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Moon, Ruler, Volume2 } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import { useEffect, useRef, useState } from "react";
 import type { WeightUnit } from "@/lib/units";
 import { getPreference, getPreferredWeightUnit, setPreference } from "@/lib/offline-db";
@@ -43,15 +43,15 @@ export function PreferencesPanel() {
   return (
     <div className="stack">
       <section className="card card-pad stack">
-        <div className="row"><Ruler size={18} className="muted" /><div><h2 className="h3">Unites de charge</h2><p className="caption" style={{ margin: "3px 0 0" }}>La valeur source reste intacte. Seul l’affichage est converti.</p></div></div>
+        <div className="row"><Icon name="ruler-horizontal" size={18} className="muted" /><div><h2 className="h3">Unites de charge</h2><p className="caption" style={{ margin: "3px 0 0" }}>La valeur source reste intacte. Seul l’affichage est converti.</p></div></div>
         <div className="segmented"><button type="button" data-active={unit === "kg"} onClick={() => void chooseUnit("kg")}>Kilogrammes</button><button type="button" data-active={unit === "lbs"} onClick={() => void chooseUnit("lbs")}>Livres</button></div>
       </section>
       <section className="card card-pad stack">
-        <PreferenceToggle icon={<Volume2 size={18} />} label="Son du timer" description="Progressive enhancement; la séance fonctionne sans son." checked={sound} onChange={(value) => void toggle("timerSound", value)} />
+        <PreferenceToggle icon={<Icon name="volume" size={18} />} label="Son du timer" description="Progressive enhancement; la séance fonctionne sans son." checked={sound} onChange={(value) => void toggle("timerSound", value)} />
         <div className="divider" />
-        <PreferenceToggle icon={<Bell size={18} />} label="Notifications" description="Optionnelles. Le timer reste exact meme si elles sont refusees." checked={notifications} onChange={(value) => void toggle("notifications", value)} />
+        <PreferenceToggle icon={<Icon name="bell" size={18} />} label="Notifications" description="Optionnelles. Le timer reste exact meme si elles sont refusees." checked={notifications} onChange={(value) => void toggle("notifications", value)} />
         <div className="divider" />
-        <div className="row"><Moon size={18} className="muted" /><div><strong>Mode sombre</strong><p className="caption" style={{ margin: "3px 0 0" }}>Experience principale de la V1.</p></div></div>
+        <div><strong>Mode sombre</strong><p className="caption" style={{ margin: "3px 0 0" }}>Experience principale de la V1.</p></div>
       </section>
     </div>
   );

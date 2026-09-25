@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, MapPinned } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import type { Metadata } from "next";
 import { ExerciseMedia } from "@/components/ExerciseMedia";
 import { MediaUpload } from "@/components/MediaUpload";
@@ -24,7 +24,7 @@ export default async function ExercisePage({ params }: { params: Promise<{ slug:
 
   return (
     <div className="page-stack">
-      <header className="page-heading"><Link href="/exercises" className="row small muted" style={{ width: "fit-content" }}><ArrowLeft size={16} /> Exercices</Link><span className="eyebrow">Mouvement</span><h1 className="h1">{exercise.name}</h1></header>
+      <header className="page-heading"><Link href="/exercises" className="row small muted" style={{ width: "fit-content" }}><Icon name="arrow-left" size={16} /> Exercices</Link><span className="eyebrow">Mouvement</span><h1 className="h1">{exercise.name}</h1></header>
       <ExerciseMedia exerciseId={exercise.id} media={media} alt={`Démonstration ${exercise.name}`} priority />
       {tips.map((tip) => <CoachTip key={tip}>{tip}</CoachTip>)}
       <ExerciseHistory exerciseId={exercise.id} />
@@ -34,10 +34,10 @@ export default async function ExercisePage({ params }: { params: Promise<{ slug:
         <MediaUpload exerciseId={exercise.id} />
       </section>
       <section className="card card-pad stack">
-        <div className="row-between"><h2 className="h2">Dans le programme</h2><MapPinned size={18} className="muted" /></div>
+        <div className="row-between"><h2 className="h2">Dans le programme</h2><Icon name="marker" size={18} className="muted" /></div>
         {usages.map((usage, index) => <div key={`${usage.week}-${usage.day}-${usage.section}-${index}`} className="row-between"><span className="small">Semaine {usage.week} - Jour {usage.day}</span><span className="caption">{usage.section}</span></div>)}
       </section>
-      {source ? <Link href={source} target="_blank" rel="noreferrer" className="button button-ghost">Ouvrir la source secondaire <ExternalLink size={17} /></Link> : null}
+      {source ? <Link href={source} target="_blank" rel="noreferrer" className="button button-ghost">Ouvrir la source secondaire <Icon name="arrow-up-right-from-square" size={17} /></Link> : null}
     </div>
   );
 }

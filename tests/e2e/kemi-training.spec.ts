@@ -56,6 +56,27 @@ test.describe("KEMI Training local-first flow", () => {
     await expect(page.getByText(/Estimated 1RM/i)).toBeVisible();
   });
 
+  test("primary routes stay inside the viewport", async ({ page }) => {
+    for (const route of ["/today", "/plan", "/progress", "/exercises", "/profile"]) {
+      await page.goto(route);
+      await expect(page.locator("main, .app-main").first()).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    }
+  });
+
+  test("wave 01 screenshots on the phone viewports", async ({ page }, testInfo) => {
+    test.skip(!["iphone-14-pro-max", "webkit-compact-iphone"].includes(testInfo.project.name));
+    for (const route of ["today", "plan", "progress", "profile"]) {
+      await page.goto(`/${route}`);
+      await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
+      await page.screenshot({
+        path: `qa/visual/wave-01/${testInfo.project.name}-${route}.png`,
+        fullPage: false,
+      });
+    }
+    await expect(page.getByRole("link", { name: "Flaticon" })).toBeVisible();
+  });
+
   test("weight preference can switch to lbs", async ({ page }) => {
     await page.goto("/profile");
     await page.getByRole("button", { name: /Livres/i }).click();

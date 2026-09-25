@@ -201,7 +201,11 @@ img, video { display: block; max-width: 100%; }
 .rest-card { width: min(100%, 520px); min-height: 70dvh; border-radius: 36px; background: var(--surface-elevated); border: 1px solid var(--divider); padding: 24px; display: flex; flex-direction: column; justify-content: space-between; }
 .rest-clock { font-size: clamp(5rem, 24vw, 8rem); line-height: 0.9; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -0.07em; }
 
+.kemi-icon { display: inline-block; flex: none; vertical-align: -0.125em; }
 .sync-indicator { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 0.72rem; }
+.motion-moment { display: grid; place-items: center; }
+.motion-moment > div { width: 100%; height: 100%; line-height: 0; }
+.motion-moment svg { width: 100% !important; height: 100% !important; }
 .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 .input {
@@ -213,6 +217,8 @@ img, video { display: block; max-width: 100%; }
 
 .section-title { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .empty-state { padding: 26px 18px; text-align: center; color: var(--text-secondary); border: 1px dashed rgba(255,255,255,0.16); border-radius: 24px; }
+.empty-state .motion-moment { margin: 0 auto 10px; }
+.empty-mark { display: block; margin: 0 auto 10px; }
 
 .stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .stat-cell { min-width: 0; padding: 13px 10px; border-radius: 18px; background: var(--surface); border: 1px solid var(--divider); }

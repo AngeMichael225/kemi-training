@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Pause, Play, RotateCcw } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import { useEffect, useRef, useState } from "react";
 import type { WorkoutItem } from "@/lib/training-model";
 import { formatClock } from "@/lib/format";
@@ -61,10 +61,10 @@ export function CardioTracker({ item, onComplete }: { item: WorkoutItem; onCompl
         </div>
       </div>
       <div className="grid-2">
-        <button type="button" className="button button-secondary" onClick={reset}><RotateCcw size={18} /> Reset</button>
-        <button type="button" className="button button-primary" onClick={toggle}>{running ? <Pause size={18} /> : <Play size={18} fill="currentColor" />} {running ? "Pause" : elapsedSec ? "Reprendre" : "Demarrer"}</button>
+        <button type="button" className="button button-secondary" onClick={reset}><Icon name="rotate-left" size={18} /> Reset</button>
+        <button type="button" className="button button-primary" onClick={toggle}>{running ? <Icon name="pause" size={18} /> : <Icon name="play" size={18} />} {running ? "Pause" : elapsedSec ? "Reprendre" : "Demarrer"}</button>
       </div>
-      <button type="button" className="button button-ghost" onClick={() => onComplete(Math.max(1, elapsedSec))} disabled={elapsedSec === 0}><Check size={18} /> Terminer le cardio</button>
+      <button type="button" className="button button-ghost" onClick={() => onComplete(Math.max(1, elapsedSec))} disabled={elapsedSec === 0}><Icon name="check" size={18} /> Terminer le cardio</button>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Award, CalendarCheck2, ChevronRight, Dumbbell, Gauge, History } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
+import { MotionMoment } from "@/components/motion/MotionMoment";
 import type { LocalWorkoutSession, StrengthTestResultLocal } from "@/lib/training-model";
 import { getCompletedSessions, getPreferredWeightUnit, getStrengthTestResults } from "@/lib/offline-db";
 import { convertWeight, type WeightUnit } from "@/lib/units";
@@ -57,19 +58,19 @@ export function ProgressClient() {
     <div className="page-stack">
       <header className="page-heading"><span className="eyebrow">Progression</span><h1 className="h1">Ce que tu as reellement fait.</h1><p className="muted" style={{ margin: 0 }}>Historique local, volume calculable et estimations de force. Aucune calorie inventee.</p></header>
       <div className="stat-strip">
-        <div className="stat-cell"><strong>{sessions.length}</strong><span><CalendarCheck2 size={12} style={{ display: "inline", marginRight: 4 }} />séances</span></div>
-        <div className="stat-cell"><strong>{totalSets}</strong><span><Dumbbell size={12} style={{ display: "inline", marginRight: 4 }} />series/blocs</span></div>
-        <div className="stat-cell"><strong>{activeWeeks || "--"}</strong><span><History size={12} style={{ display: "inline", marginRight: 4 }} />semaines actives</span></div>
+        <div className="stat-cell"><strong>{sessions.length}</strong><span><Icon name="calendar-check" size={12} style={{ marginRight: 4 }} />séances</span></div>
+        <div className="stat-cell"><strong>{totalSets}</strong><span><Icon name="dumbbell-fitness" size={12} style={{ marginRight: 4 }} />series/blocs</span></div>
+        <div className="stat-cell"><strong>{activeWeeks || "--"}</strong><span><Icon name="time-past" size={12} style={{ marginRight: 4 }} />semaines actives</span></div>
       </div>
 
       <HistoryChart values={volumes.filter((value) => value > 0)} label="Volume de charge (kg equivalents)" />
 
       <section className="stack">
-        <div className="section-title"><h2 className="h2">Force estimee</h2>{display1rm ? <span className="pill pill-accent"><Gauge size={13} /> max {display1rm.toFixed(1)} {unit}</span> : null}</div>
+        <div className="section-title"><h2 className="h2">Force estimee</h2>{display1rm ? <span className="pill pill-accent"><Icon name="dashboard" size={13} /> max {display1rm.toFixed(1)} {unit}</span> : null}</div>
         {recentTestsByName.length ? recentTestsByName.map((result) => {
           const value = result.estimated1rm === null ? null : unit === "kg" ? result.estimated1rm : convertWeight(result.estimated1rm, "kg", "lbs");
           return <div key={result.id} className="card card-pad row-between"><div><strong>{result.testName}</strong><div className="caption" style={{ marginTop: 4 }}>{formatDateTime(result.performedAt)}</div></div><div style={{ textAlign: "right" }}><span className="caption">Estimated 1RM</span><div className="h2 metric">{value ? value.toFixed(1) : "--"} {value ? unit : ""}</div></div></div>;
-        }) : <div className="empty-state"><Award size={24} style={{ margin: "0 auto 10px" }} />Complete un test de force pour afficher une estimation 1RM.</div>}
+        }) : <div className="empty-state"><Icon name="trophy" size={24} className="empty-mark" />Complete un test de force pour afficher une estimation 1RM.</div>}
       </section>
 
       <section className="stack">
@@ -85,9 +86,9 @@ export function ProgressClient() {
         {sessions.length ? sessions.slice(0, 8).map((session) => (
           <article className="card card-pad row-between" key={session.id}>
             <div><strong>Semaine {session.weekNumber} - Jour {session.dayNumber}</strong><div className="caption" style={{ marginTop: 4 }}>{formatDateTime(session.completedAt ?? session.startedAt)} - {session.setLogs.length} series/blocs</div></div>
-            <ChevronRight size={17} className="muted" />
+            <Icon name="angle-small-right" size={17} className="muted" />
           </article>
-        )) : <div className="empty-state">Ton historique apparaitra ici apres la premiere séance terminée.</div>}
+        )) : <div className="empty-state"><MotionMoment name="empty-progress" size={72} fallback={<Icon name="chart-line-up" size={24} className="empty-mark" />} />Ton historique apparaitra ici apres la premiere séance terminée.</div>}
       </section>
     </div>
   );

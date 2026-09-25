@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Minus, Plus, RotateCcw, Trophy } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import type { StrengthTestResultLocal, StrengthTestSeed } from "@/lib/training-model";
 import { RestTimer } from "@/components/RestTimer";
 import { brzyckiEstimated1RM } from "@/lib/strength";
@@ -98,13 +98,13 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
       <div className="page-stack">
         <header className="page-heading"><span className="eyebrow">Test terminé</span><h1 className="h1">{test.name}</h1></header>
         <section className="card card-pad card-elevated stack" style={{ minHeight: "54dvh", justifyContent: "space-between" }}>
-          <div className="workout-index workout-index-accent" style={{ width: 64, height: 64, borderRadius: 22 }}><Trophy size={28} /></div>
+          <div className="workout-index workout-index-accent" style={{ width: 64, height: 64, borderRadius: 22 }}><Icon name="trophy" size={28} /></div>
           <div><span className="caption">Estimated 1RM - Brzycki</span><div className="rest-clock" style={{ fontSize: "clamp(4rem, 18vw, 7rem)", marginTop: 8 }}>{visibleEstimate?.toFixed(1) ?? "--"}</div><div className="h2">{visibleEstimate ? unit : ""}</div><p className="small muted">Il s’agit d’une estimation calculee a partir de la derniere serie renseignee, pas d’un 1RM mesure.</p></div>
           <button type="button" className="button button-secondary" onClick={() => { setSavedResult(null); setSetIndex(0); setActuals(test.sets.map((set) => ({
             weight: set.weight === null ? null : displayWeight(set.weight, set.weight_unit ?? "kg", unit).value,
             reps: set.repetitions,
             completed: false,
-          }))); }}><RotateCcw size={18} /> Refaire le test</button>
+          }))); }}><Icon name="rotate-left" size={18} /> Refaire le test</button>
         </section>
       </div>
     );
@@ -123,27 +123,27 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
         <div className="row-between"><div><span className="caption">Prescription source</span><div className="h3" style={{ marginTop: 4 }}>{prescribed.weight_raw ?? "Charge non renseignée"}</div></div><span className="pill">{prescribed.rest_raw ?? "--"}</span></div>
         <label className="label">Charge realisee
           <div className="counter-control">
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: Math.max(0, (current.weight ?? 0) - step) })}><Minus size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: Math.max(0, (current.weight ?? 0) - step) })}><Icon name="minus" size={18} /></button>
             <div className="counter-value">{current.weight ?? "--"} {current.weight !== null ? unit : ""}</div>
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: (current.weight ?? 0) + step })}><Plus size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: (current.weight ?? 0) + step })}><Icon name="plus" size={18} /></button>
           </div>
         </label>
         <label className="label">Répétitions
           <div className="counter-control">
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: Math.max(0, (current.reps ?? 0) - 1) })}><Minus size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: Math.max(0, (current.reps ?? 0) - 1) })}><Icon name="minus" size={18} /></button>
             <div className="counter-value">{current.reps ?? "--"} reps</div>
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: (current.reps ?? 0) + 1 })}><Plus size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: (current.reps ?? 0) + 1 })}><Icon name="plus" size={18} /></button>
           </div>
         </label>
-        <button type="button" className="button button-primary" onClick={completeSet}><Check size={19} /> Serie terminée</button>
+        <button type="button" className="button button-primary" onClick={completeSet}><Icon name="check" size={19} /> Serie terminée</button>
       </section>
 
       <div className="row-between">
-        <button type="button" className="button button-secondary" onClick={() => setSetIndex((value) => Math.max(0, value - 1))} disabled={setIndex === 0}><ChevronLeft size={18} /> Précédent</button>
-        <button type="button" className="button button-secondary" onClick={() => setSetIndex((value) => Math.min(test.sets.length - 1, value + 1))} disabled={setIndex === test.sets.length - 1}>Suivant <ChevronRight size={18} /></button>
+        <button type="button" className="button button-secondary" onClick={() => setSetIndex((value) => Math.max(0, value - 1))} disabled={setIndex === 0}><Icon name="angle-small-left" size={18} /> Précédent</button>
+        <button type="button" className="button button-secondary" onClick={() => setSetIndex((value) => Math.min(test.sets.length - 1, value + 1))} disabled={setIndex === test.sets.length - 1}>Suivant <Icon name="angle-small-right" size={18} /></button>
       </div>
 
-      {completedCount === test.sets.length ? <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => void finishTest()}><Trophy size={19} /> Calculer l’Estimated 1RM</button> : null}
+      {completedCount === test.sets.length ? <button type="button" className="button button-primary" style={{ minHeight: 58 }} onClick={() => void finishTest()}><Icon name="trophy" size={19} /> Calculer l’Estimated 1RM</button> : null}
 
       {restTarget ? <RestTimer key={restTarget} targetEndTime={restTarget} nextLabel={`Serie ${Math.min(test.sets.length, setIndex + 1)} - ${test.name}`} onChangeTarget={setRestTarget} onDone={() => setRestTarget(null)} /> : null}
     </div>

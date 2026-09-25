@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import { useRouter } from "next/navigation";
 import type { ProgramWeekSeed, WorkoutDaySeed } from "@/lib/training-model";
 import { createLocalSession } from "@/lib/session-client";
@@ -19,7 +19,7 @@ export function StartWorkoutButton({ day, week, className = "button button-prima
 
   return (
     <button type="button" className={className} onClick={() => void start()} disabled={busy}>
-      <Play size={18} fill="currentColor" aria-hidden="true" />
+      <Icon name="play" size={18} />
       {busy ? "Ouverture..." : "Commencer la séance"}
     </button>
   );

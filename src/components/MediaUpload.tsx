@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, UploadCloud } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import { saveCustomMedia } from "@/lib/offline-db";
 import { hasSupabaseBrowserEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
@@ -62,7 +62,7 @@ export function MediaUpload({ exerciseId, onSaved }: { exerciseId: string; onSav
     <div className="stack">
       <input ref={inputRef} type="file" accept={ACCEPT} hidden onChange={(event) => void handleFile(event.target.files?.[0])} />
       <button type="button" className="button button-secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
-        {busy ? <UploadCloud size={18} /> : <ImagePlus size={18} />}
+        {busy ? <Icon name="cloud-upload" size={18} /> : <Icon name="picture" size={18} />}
         {busy ? "Enregistrement..." : "Ajouter mon media"}
       </button>
       {status ? <p className="caption" role="status" style={{ margin: 0 }}>{status}</p> : null}

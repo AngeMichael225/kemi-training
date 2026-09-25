@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Dumbbell, ExternalLink, Pause, Play } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ExerciseMediaSeed } from "@/lib/training-model";
 import { getCustomMedia } from "@/lib/offline-db";
@@ -90,7 +90,7 @@ export function ExerciseMedia({
     return (
       <div className="media-frame">
         <video ref={videoRef} src={owned.url} playsInline muted loop autoPlay preload="metadata" aria-label={alt} />
-        <div className="media-overlay"><span className="pill pill-accent">{local ? "Média personnel" : "Média synchronisé"}</span><button type="button" className="icon-button" onClick={() => void toggleVideo()} aria-label={playing ? "Mettre en pause" : "Lire"}>{playing ? <Pause size={18} /> : <Play size={18} />}</button></div>
+        <div className="media-overlay"><span className="pill pill-accent">{local ? "Média personnel" : "Média synchronisé"}</span><button type="button" className="icon-button" onClick={() => void toggleVideo()} aria-label={playing ? "Mettre en pause" : "Lire"}>{playing ? <Icon name="pause" size={18} /> : <Icon name="play" size={18} />}</button></div>
       </div>
     );
   }
@@ -104,7 +104,7 @@ export function ExerciseMedia({
       return (
         <div className="media-frame">
           <video ref={videoRef} src={direct.external_url} playsInline muted loop autoPlay preload="metadata" aria-label={alt} />
-          <div className="media-overlay"><span className="pill">Source coach</span><button type="button" className="icon-button" onClick={() => void toggleVideo()} aria-label={playing ? "Mettre en pause" : "Lire"}>{playing ? <Pause size={18} /> : <Play size={18} />}</button></div>
+          <div className="media-overlay"><span className="pill">Source coach</span><button type="button" className="icon-button" onClick={() => void toggleVideo()} aria-label={playing ? "Mettre en pause" : "Lire"}>{playing ? <Icon name="pause" size={18} /> : <Icon name="play" size={18} />}</button></div>
         </div>
       );
     }
@@ -127,9 +127,9 @@ export function ExerciseMedia({
   return (
     <div className="media-frame" style={{ display: "grid", placeItems: "center", padding: 22 }}>
       <div className="stack" style={{ justifyItems: "center", textAlign: "center", maxWidth: 300 }}>
-        <span className="workout-index workout-index-accent"><Dumbbell size={23} /></span>
+        <span className="workout-index workout-index-accent"><Icon name="dumbbell-fitness" size={23} /></span>
         <div><strong>Média personnel recommande</strong><p className="caption" style={{ margin: "6px 0 0" }}>Le fichier source fournit une page de reference, pas un média direct reutilisable.</p></div>
-        {reference?.external_url ? <Link href={reference.external_url} target="_blank" rel="noreferrer" className="button button-ghost" style={{ minHeight: 44 }}>Référence source <ExternalLink size={15} /></Link> : null}
+        {reference?.external_url ? <Link href={reference.external_url} target="_blank" rel="noreferrer" className="button button-ghost" style={{ minHeight: 44 }}>Référence source <Icon name="arrow-up-right-from-square" size={15} /></Link> : null}
       </div>
     </div>
   );

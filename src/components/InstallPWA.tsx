@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Download, Share2, Smartphone } from "lucide-react";
+import { Icon } from "@/components/icons/Icon";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
@@ -31,11 +31,11 @@ export function InstallPWA() {
     setPrompt(null);
   }
 
-  if (standalone) return <div className="pill pill-accent"><Smartphone size={13} /> Installée comme app</div>;
-  if (prompt) return <button type="button" className="button button-primary" onClick={() => void install()}><Download size={18} /> Installer KEMI Training</button>;
+  if (standalone) return <div className="pill pill-accent"><Icon name="mobile" size={13} /> Installée comme app</div>;
+  if (prompt) return <button type="button" className="button button-primary" onClick={() => void install()}><Icon name="download" size={18} /> Installer KEMI Training</button>;
   return (
     <div className="coach-tip">
-      <strong><Share2 size={13} style={{ display: "inline", marginRight: 5 }} /> Installation iPhone</strong>
+      <strong><Icon name="share" size={13} style={{ marginRight: 5 }} /> Installation iPhone</strong>
       Dans Safari, utilise Partager puis Ajouter à l’écran d’accueil. Le mode standalone respecte les safe areas iOS.
     </div>
   );
