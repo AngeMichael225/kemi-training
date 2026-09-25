@@ -1,16 +1,18 @@
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { createClient } from "@supabase/supabase-js";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { TrainingSeed } from "../src/lib/training-model";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const athleteId = process.env.KEMI_USER_ID;
-if (!url || !serviceKey || !athleteId) {
-  throw new Error("NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and KEMI_USER_ID are required for seed.");
+export interface SeedCounts {
+  weeks: number;
+  days: number;
+  items: number;
+  exercises: number;
+  media: number;
+  tests: number;
 }
-
-const seed = JSON.parse(await readFile(new URL("../seed/kemi-training-program.json", import.meta.url), "utf8")) as TrainingSeed;
-const supabase = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
 function parseDate(value: string): string {
   const [day, month, year] = value.split("/");
@@ -23,13 +25,22 @@ function range(value: string | null): [number | null, number | null] {
   return [numbers[0] ?? null, numbers[1] ?? numbers[0] ?? null];
 }
 
-async function upsert(table: string, rows: Record<string, unknown>[], onConflict = "id") {
+async function upsert(supabase: SupabaseClient, table: string, rows: Record<string, unknown>[], onConflict = "id") {
   if (!rows.length) return;
   const result = await supabase.from(table).upsert(rows, { onConflict });
   if (result.error) throw new Error(`${table}: ${result.error.message}`);
 }
 
-await upsert("profiles", [{
+export async function seedKemiProgram(options: {
+  url: string;
+  serviceRoleKey: string;
+  athleteId: string;
+}): Promise<SeedCounts> {
+  const seed = JSON.parse(await readFile(new URL("../seed/kemi-training-program.json", import.meta.url), "utf8")) as TrainingSeed;
+  const supabase = createClient(options.url, options.serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const athleteId = options.athleteId;
+
+  await upsert(supabase, "profiles", [{
   id: athleteId,
   display_name: seed.athlete.display_name,
   preferred_units: seed.athlete.preferred_units,
@@ -40,8 +51,8 @@ await upsert("profiles", [{
     source_title: seed.athlete.source_title,
   },
 }]);
-await upsert("user_preferences", [{ athlete_id: athleteId, preferred_weight_unit: seed.athlete.preferred_units }], "athlete_id");
-await upsert("training_programs", [{
+await upsert(supabase, "user_preferences", [{ athlete_id: athleteId, preferred_weight_unit: seed.athlete.preferred_units }], "athlete_id");
+await upsert(supabase, "training_programs", [{
   id: seed.program.id,
   athlete_id: athleteId,
   name: seed.program.name,
@@ -67,10 +78,10 @@ const phases = seed.program.phases.map((phase) => {
     source_cell: phase.source_cell,
   };
 });
-await upsert("program_phases", phases);
+await upsert(supabase, "program_phases", phases);
 
 const phaseForWeek = (week: number) => phases.find((phase) => (phase.start_week ?? week) <= week && (phase.end_week ?? week) >= week)?.id ?? null;
-await upsert("program_weeks", seed.program.weeks.map((week) => ({
+await upsert(supabase, "program_weeks", seed.program.weeks.map((week) => ({
   id: week.id,
   program_id: seed.program.id,
   phase_id: phaseForWeek(week.week_number),
@@ -91,7 +102,7 @@ const days = seed.program.weeks.flatMap((week) => week.days.map((day) => ({
   source_sheet: day.source_sheet,
   source_cell: day.source_cell,
 })));
-await upsert("workout_days", days);
+await upsert(supabase, "workout_days", days);
 
 const sections = seed.program.weeks.flatMap((week) => week.days.flatMap((day) => day.sections.map((section) => ({
   id: section.id,
@@ -103,9 +114,9 @@ const sections = seed.program.weeks.flatMap((week) => week.days.flatMap((day) =>
   source_sheet: section.source_sheet,
   source_cell: section.source_cell,
 }))));
-await upsert("workout_sections", sections);
+await upsert(supabase, "workout_sections", sections);
 
-await upsert("exercises", seed.exercises.map((exercise) => ({
+await upsert(supabase, "exercises", seed.exercises.map((exercise) => ({
   id: exercise.id,
   owner_id: null,
   slug: exercise.slug,
@@ -117,7 +128,7 @@ await upsert("exercises", seed.exercises.map((exercise) => ({
   aliases: exercise.aliases,
 })));
 
-await upsert("exercise_media", seed.exercise_media.map((media) => ({
+await upsert(supabase, "exercise_media", seed.exercise_media.map((media) => ({
   id: media.id,
   exercise_id: media.exercise_id,
   owner_id: null,
@@ -161,9 +172,9 @@ const items = seed.program.weeks.flatMap((week) => week.days.flatMap((day) => da
   source_url: item.source_url,
   source_location: item.source_location,
 })))));
-await upsert("workout_items", items);
+await upsert(supabase, "workout_items", items);
 
-await upsert("strength_test_templates", seed.strength_tests.map((test) => ({
+await upsert(supabase, "strength_test_templates", seed.strength_tests.map((test) => ({
   id: test.id,
   program_id: seed.program.id,
   exercise_id: test.exercise_id,
@@ -176,7 +187,7 @@ await upsert("strength_test_templates", seed.strength_tests.map((test) => ({
   source_cell: test.source_cell,
 })));
 
-await upsert("strength_test_template_sets", seed.strength_tests.flatMap((test) => test.sets.map((set) => ({
+await upsert(supabase, "strength_test_template_sets", seed.strength_tests.flatMap((test) => test.sets.map((set) => ({
   template_id: test.id,
   set_number: set.set_number,
   weight_raw: set.weight_raw,
@@ -188,4 +199,61 @@ await upsert("strength_test_template_sets", seed.strength_tests.flatMap((test) =
   source_cell: set.source_cell,
 }))), "template_id,set_number");
 
-console.log(`Seeded ${seed.program.weeks.length} weeks, ${days.length} workout days, ${items.length} workout items and ${seed.exercises.length} exercises.`);
+  const counts: SeedCounts = {
+    weeks: seed.program.weeks.length,
+    days: days.length,
+    items: items.length,
+    exercises: seed.exercises.length,
+    media: seed.exercise_media.length,
+    tests: seed.strength_tests.length,
+  };
+  console.log(`Seeded ${counts.weeks} weeks, ${counts.days} workout days, ${counts.items} workout items and ${counts.exercises} exercises.`);
+  return counts;
+}
+
+export function resolveSeedAdminKey(env: Record<string, string | undefined>): string | undefined {
+  const secret = env.SUPABASE_SECRET_KEY?.trim();
+  if (secret) return secret;
+  const legacy = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  return legacy || undefined;
+}
+
+export function isAllowedSeedHost(url: string, linkedRef: string | null): boolean {
+  const host = new URL(url).host;
+  if (host === "127.0.0.1:54321" || host === "localhost:54321") return true;
+  return Boolean(linkedRef) && host === `${linkedRef}.supabase.co`;
+}
+
+function linkedProjectRef(): string | null {
+  try {
+    const ref = readFileSync(new URL("../supabase/.temp/project-ref", import.meta.url), "utf8").trim();
+    return ref || null;
+  } catch {
+    return null;
+  }
+}
+
+function invokedAsCli(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return import.meta.url.toLowerCase() === pathToFileURL(path.resolve(entry)).href.toLowerCase();
+}
+
+if (invokedAsCli()) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = resolveSeedAdminKey(process.env);
+  const athleteId = process.env.KEMI_USER_ID;
+  if (!url || !serviceRoleKey || !athleteId) {
+    console.error("NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) and KEMI_USER_ID are required for seed.");
+    process.exitCode = 1;
+  } else if (!isAllowedSeedHost(url, linkedProjectRef())) {
+    console.error(`Refusing to seed unexpected host ${new URL(url).host}.`);
+    process.exitCode = 1;
+  } else {
+    console.log(`Seed target host: ${new URL(url).host}`);
+    seedKemiProgram({ url, serviceRoleKey, athleteId }).catch((error: unknown) => {
+      console.error(error instanceof Error ? error.message : "Seed failed.");
+      process.exitCode = 1;
+    });
+  }
+}

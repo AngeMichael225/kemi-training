@@ -67,3 +67,42 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  supabase:
+    name: Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Start local Supabase
+        run: pnpm exec supabase start
+      - name: Reset local database
+        run: pnpm exec supabase db reset --local --no-seed
+      - name: Database lint
+        run: pnpm supabase:lint
+      - name: pgTAP
+        run: pnpm supabase:test
+      - name: Generate database types
+        run: pnpm supabase:types
+      - name: Check generated types drift
+        run: git diff --exit-code -- src/lib/supabase/database.types.ts
+      - name: Bootstrap and repeat
+        run: |
+          pnpm supabase:bootstrap
+          pnpm supabase:bootstrap
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Local Supabase auth and sync
+        run: pnpm test:supabase
+      - name: Stop local Supabase
+        if: always()
+        run: pnpm exec supabase stop

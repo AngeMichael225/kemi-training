@@ -25,6 +25,15 @@
     "test:e2e:webkit": "playwright test --project=webkit-compact-iphone",
     "import:training": "python scripts/import_training_xlsx.py \"data/source/Training Routine - KEMI S.xlsx\" seed/kemi-training-program.json --report seed/import-report.json",
     "seed": "tsx scripts/seed-supabase.ts",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset --local --no-seed",
+    "supabase:types": "tsx scripts/generate-db-types.ts",
+    "supabase:test": "supabase test db --local",
+    "supabase:lint": "supabase db lint --local --fail-on error",
+    "supabase:bootstrap": "tsx scripts/bootstrap-local-supabase.ts",
+    "test:supabase": "playwright test -c playwright.supabase.config.ts",
     "import-training-xlsx": "./scripts/import-training-xlsx"
   },
   "dependencies": {
