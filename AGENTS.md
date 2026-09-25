@@ -14,7 +14,6 @@ Mobile-first training PWA for the KEMI coach workbook. The app tracks sessions l
 ## Commands
 
 ```bash
-pnpm install --frozen-lockfile
 pnpm dev
 pnpm lint
 pnpm typecheck
@@ -22,6 +21,8 @@ pnpm test
 pnpm build
 pnpm test:e2e
 pnpm test:e2e:webkit
+pnpm supabase:bootstrap
+pnpm supabase:test
 ```
 
 Workbook import (Python):

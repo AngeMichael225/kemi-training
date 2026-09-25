@@ -14,6 +14,10 @@ export default defineConfig({
     command: "pnpm dev",
     url: "http://127.0.0.1:3000/today",
     reuseExistingServer: !process.env.CI,
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: "",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+    },
   },
   projects: [
     { name: "iphone-14-pro-max", use: { ...mobile, browserName: "chromium", viewport: { width: 430, height: 932 } } },

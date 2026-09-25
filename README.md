@@ -23,17 +23,15 @@ Le snapshot actuel contient 4 semaines, 12 seances, 140 items, 33 exercices, 27 
 
 ## Installation
 
-Prérequis : Node.js 24, pnpm 10.17.1, Python 3.11+ (3.14 vérifié localement).
+Prérequis : Node.js 24, pnpm 10.17.1, Docker Desktop, Python 3.11+ pour l'import du classeur.
 
 ```bash
 pnpm install --frozen-lockfile
-python -m pip install -r requirements-dev.txt
-cp .env.example .env.local
-pnpm import:training
+pnpm supabase:bootstrap
 pnpm dev
 ```
 
-Ouvrir `http://localhost:3000`. Sans variables Supabase, l'application bascule volontairement en **mode local de revue** et les fonctions de seance restent utilisables via IndexedDB.
+Ouvrir `http://localhost:3000`. Sans Docker, `pnpm dev` seul reste en mode local de revue. Le détail est dans `docs/DEPLOYMENT.md`.
 
 ## Variables d'environnement
 
@@ -43,25 +41,20 @@ Voir `.env.example`.
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 KEMI_USER_ID=
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` est reserve au script serveur de seed et ne doit jamais etre expose au navigateur.
+`SUPABASE_SECRET_KEY` est la cle de seed preferee. `SUPABASE_SERVICE_ROLE_KEY` reste un repli temporaire. Les deux restent hors du navigateur, de `src/` et de Vercel.
 
 ## Supabase
 
-1. Creer un projet Supabase.
-2. Executer les migrations dans `supabase/migrations/` dans l'ordre.
-3. Creer/autoriser le compte KEMI dans Supabase Auth.
-4. Copier son UUID dans `KEMI_USER_ID` uniquement pour le seed initial.
-5. Executer :
-
 ```bash
-pnpm seed
+pnpm supabase:bootstrap
 ```
 
-Les migrations creent le schema, les index, les triggers, les politiques RLS et le bucket prive `exercise-media`. Les medias personnels sont ranges sous un prefixe propre a l'utilisateur.
+La commande locale applique les migrations, crée `kemi.local@example.test`, charge le programme KEMI et génère les types. Les migrations `0001` et `0002` restent inchangées. Le bucket privé `exercise-media` range les médias personnels sous le préfixe de l'utilisateur.
 
 ## Authentification
 
@@ -123,6 +116,8 @@ pnpm test
 pnpm build
 pnpm test:e2e
 pnpm test:e2e:webkit
+pnpm supabase:lint
+pnpm supabase:test
 ```
 
 Les projets Playwright couvrent : 430 x 932, 375 x 667 sous WebKit (`webkit-compact-iphone`), 412 x 915 Android, 768 x 1024 tablette et 1440 x 900 desktop. `pnpm test:e2e:webkit` lance ce projet WebKit.
@@ -135,14 +130,11 @@ Le rapport de la passe effectuee dans l'environnement de generation se trouve da
 
 ## Deploiement Vercel
 
-1. Pousser le repository vers GitHub/GitLab/Bitbucket.
-2. Importer le projet dans Vercel.
-3. Ajouter `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` et `NEXT_PUBLIC_APP_URL`.
-4. Garder `SUPABASE_SERVICE_ROLE_KEY` hors du client ; elle n'est utile que pour une operation de seed controlee.
-5. Executer les migrations/seed Supabase avant l'ouverture de la production.
-6. Verifier le build, puis les parcours Playwright sur l'URL Preview/Production.
+La Wave 02 ne deploie pas l'application.
 
-Les details de production sont dans `docs/DEPLOYMENT.md`.
+Apres la fusion de la Wave 02 : creer ou lier le projet Vercel, connecter GitHub, et activer les Preview Deployments pour les futures branches. La Wave 08 configure les variables de production, l'URL Auth Supabase finale, puis le deploiement de production.
+
+Les previews ne recoivent pas les identifiants Supabase de production. Ne pas placer `SUPABASE_SECRET_KEY` ni `SUPABASE_SERVICE_ROLE_KEY` sur Vercel. Les details sont dans `docs/DEPLOYMENT.md`.
 
 ## Documentation
 

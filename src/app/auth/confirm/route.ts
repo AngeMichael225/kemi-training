@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { safeInternalPath } from "@/lib/supabase/redirect";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -7,9 +8,7 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
   const code = url.searchParams.get("code");
-  const requestedNext = url.searchParams.get("next") || "/today";
-  const safeNext = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/today";
-  const redirectTo = new URL(safeNext, url.origin);
+  const redirectTo = new URL(safeInternalPath(url.searchParams.get("next")), url.origin);
 
   try {
     const supabase = await createClient();

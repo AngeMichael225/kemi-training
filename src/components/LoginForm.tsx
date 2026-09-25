@@ -16,10 +16,9 @@ export function LoginForm({ configured }: { configured: boolean }) {
     setStatus("");
     try {
       const supabase = createClient();
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${baseUrl}/auth/confirm` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
       });
       setStatus(error ? error.message : "Lien de connexion envoye. Verifie ta boite courriel.");
     } catch {

@@ -45,4 +45,7 @@
 Open a session, complete a set, disable network, reload visited session, record another set, restore network and verify pending mutation removal after successful API response.
 
 ## Security verification
-Attempt cross-user reads/writes with two Supabase users. Verify all private program/session/test records are blocked by RLS. Verify exercise-media Storage objects cannot be read/written outside the authenticated user's prefix.
+Attempt cross-user reads/writes with two Supabase users. `pnpm supabase:test` runs the pgTAP suite for RLS, catalog reads, private exercises, storage prefixes, and cross-tenant foreign keys. `pnpm test:supabase` signs in through the local magic link and posts an authenticated `/api/sync` snapshot. The default `pnpm test:e2e` suite stays in local review mode and does not require Docker.
+
+## Local Supabase
+`pnpm supabase:bootstrap` is the single local setup command. `pnpm supabase:lint` must report no errors. Generated `src/lib/supabase/database.types.ts` is committed, and CI fails if a fresh generation drifts. CI runs Quality, Playwright, and a local-only Supabase job. That job starts Docker Supabase, resets the local database, lints, runs pgTAP, checks type drift, and runs the local auth/sync tests. It does not receive production credentials.

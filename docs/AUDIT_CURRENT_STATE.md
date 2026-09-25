@@ -151,3 +151,11 @@ The environment audit ran after the lockfile existed. Two residuals stay open. C
 ## Recommendation
 
 Merge foundation only after CI is green. Next build wave is Wave 01, after the Flaticon license is confirmed. Do not rewrite the service worker or the training seed in that wave.
+
+## Wave 02 addendum
+
+Date: 2026-09-24. Read-only audits on `45f64a0` confirmed SEC-004: an authenticated athlete can store `workout_sessions.workout_day_id` and `session_exercises.workout_item_id` that belong to another athlete, because those policies checked `athlete_id` only. The same class applies to private `exercise_id` on strength tests, personal records, and exercise media. GLOBAL CATALOG — INTENTIONAL: `owner_id is null` stays readable by every authenticated user.
+
+`supabase/config.toml` enabled a missing `supabase/seed.sql`, so `db reset` could not finish. Wave 02 turns SQL seeding off and loads the existing TypeScript seed after creating `kemi.local@example.test`. Migration `0003_rls_fk_guards.sql` adds the foreign-key guards and the missing indexes. `0001` and `0002` stay unchanged.
+
+Local Docker and the hosted project `pripmaupaqorphvmkprl` are both current through `20260925185536_function_execute_guards.sql`. That migration pins `set_updated_at` and stops anonymous or signed-in clients from calling `handle_new_user`. RLS remains enabled on all 17 public tables. `0001` and `0002` stay unchanged.
