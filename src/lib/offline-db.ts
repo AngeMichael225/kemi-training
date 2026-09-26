@@ -4,11 +4,18 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { LocalWorkoutSession, ProgramWeekSeed, StrengthTestResultLocal, WorkoutDaySeed } from "@/lib/training-model";
 import type { WeightUnit } from "@/lib/units";
 
-interface PendingMutation {
+export interface PendingMutation {
   id: string;
   type: "session_snapshot" | "strength_test_result";
   payload: unknown;
   createdAt: string;
+}
+
+/** Oldest first; equal timestamps break ties by id for a stable sync order. */
+export function comparePendingMutations(a: PendingMutation, b: PendingMutation): number {
+  const byCreated = a.createdAt.localeCompare(b.createdAt);
+  if (byCreated !== 0) return byCreated;
+  return a.id.localeCompare(b.id);
 }
 
 interface PreferenceRecord {
@@ -94,6 +101,7 @@ export async function saveSession(session: LocalWorkoutSession, queueSync = true
   );
   await tx.objectStore("sessions").put(session);
   if (queueSync) {
+    // Coalesce by session id: put replaces any older snapshot for the same session.
     await tx.objectStore("pendingMutations").put(pendingSessionMutation(session, new Date().toISOString()));
   }
   await tx.done;
@@ -198,7 +206,13 @@ export async function getLastPerformance(exerciseId: string) {
 }
 
 export async function getPendingMutations(): Promise<PendingMutation[]> {
-  return (await db()).getAll("pendingMutations");
+  const values = await (await db()).getAll("pendingMutations");
+  return values.sort(comparePendingMutations);
+}
+
+/** Test helper: insert a pending row with an explicit createdAt. */
+export async function putPendingMutationForTests(mutation: PendingMutation): Promise<void> {
+  await (await db()).put("pendingMutations", mutation);
 }
 
 export async function deletePendingMutation(id: string): Promise<void> {
