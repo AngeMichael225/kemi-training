@@ -1,6 +1,6 @@
 begin;
 
-select plan(8);
+select plan(7);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -82,25 +82,33 @@ select is(
   'user B cannot list or download user A storage object'
 );
 
-select throws_ok(
-  format(
-    'update storage.objects set name = name where bucket_id = %L and name = %L',
-    'exercise-media',
-    '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
+-- Invisible under RLS: UPDATE/DELETE affect 0 rows and do not raise 42501.
+select is(
+  (
+    with attempted as (
+      update storage.objects
+      set name = name
+      where bucket_id = 'exercise-media'
+        and name = '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
+      returning 1
+    )
+    select count(*)::int from attempted
   ),
-  '42501',
-  null,
+  0,
   'user B cannot update user A storage object'
 );
 
-select throws_ok(
-  format(
-    'delete from storage.objects where bucket_id = %L and name = %L',
-    'exercise-media',
-    '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
+select is(
+  (
+    with attempted as (
+      delete from storage.objects
+      where bucket_id = 'exercise-media'
+        and name = '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
+      returning 1
+    )
+    select count(*)::int from attempted
   ),
-  '42501',
-  null,
+  0,
   'user B cannot delete user A storage object'
 );
 

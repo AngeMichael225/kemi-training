@@ -101,38 +101,47 @@ select is(
   'user B cannot read user A owned exercise_media rows'
 );
 
-select throws_ok(
-  format(
-    'update storage.objects set metadata = jsonb_build_object(%L, %L) where bucket_id = %L and name = %L',
-    'stolen',
-    'true',
-    'exercise-media',
-    '20000000-0000-4000-8000-0000000000a2'::text || '/ex/demo.webp'
+-- Invisible under RLS: UPDATE/DELETE affect 0 rows and do not raise 42501.
+select is(
+  (
+    with attempted as (
+      update storage.objects
+      set metadata = jsonb_build_object('stolen', 'true')
+      where bucket_id = 'exercise-media'
+        and name = '20000000-0000-4000-8000-0000000000a2'::text || '/ex/demo.webp'
+      returning 1
+    )
+    select count(*)::int from attempted
   ),
-  '42501',
-  null,
+  0,
   'user B cannot update user A storage object'
 );
 
-select throws_ok(
-  format(
-    'delete from storage.objects where bucket_id = %L and name = %L',
-    'exercise-media',
-    '20000000-0000-4000-8000-0000000000a2'::text || '/ex/demo.webp'
+select is(
+  (
+    with attempted as (
+      delete from storage.objects
+      where bucket_id = 'exercise-media'
+        and name = '20000000-0000-4000-8000-0000000000a2'::text || '/ex/demo.webp'
+      returning 1
+    )
+    select count(*)::int from attempted
   ),
-  '42501',
-  null,
+  0,
   'user B cannot delete user A storage object'
 );
 
-select throws_ok(
-  format(
-    'update public.exercise_media set alt_text = %L where owner_id = %L',
-    'taken',
-    '20000000-0000-4000-8000-0000000000a2'
+select is(
+  (
+    with attempted as (
+      update public.exercise_media
+      set alt_text = 'taken'
+      where owner_id = '20000000-0000-4000-8000-0000000000a2'
+      returning 1
+    )
+    select count(*)::int from attempted
   ),
-  '42501',
-  null,
+  0,
   'user B cannot update user A media metadata'
 );
 
@@ -150,4 +159,5 @@ select is(
   'exercise-media bucket remains private after isolation checks'
 );
 
+select * from finish();
 rollback;
