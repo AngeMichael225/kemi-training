@@ -5,7 +5,7 @@ const MEDIA_CACHE = "kemi-media-v2";
 const KEEP_CACHES = new Set([SHELL_CACHE, STATIC_CACHE, MEDIA_CACHE]);
 const SHELL = ["/offline.html", "/icons/kemi-icon.svg", "/icons/kemi-maskable.svg"];
 
-/** Test/harness flag: skip network and answer from caches (WebKit cannot use Playwright setOffline). */
+/** Test harness: skip network and answer from caches (WebKit cannot use Playwright setOffline). */
 let forceOffline = false;
 
 function isSessionNavigation(url) {
@@ -35,6 +35,7 @@ async function matchSessionDocument(url) {
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "KEMI_FORCE_OFFLINE") {
     forceOffline = Boolean(event.data.value);
+    if (event.ports && event.ports[0]) event.ports[0].postMessage({ ok: true });
   }
 });
 

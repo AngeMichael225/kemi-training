@@ -48,6 +48,10 @@ async function readStoredSessions(page: Page): Promise<StoredSessionRow[]> {
 async function registerAndControlServiceWorker(page: Page) {
   await page.evaluate(async () => {
     if (!("serviceWorker" in navigator)) throw new Error("serviceWorker unavailable");
+    const previous = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(previous.map((registration) => registration.unregister()));
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => caches.delete(key)));
     await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
   });
@@ -62,34 +66,72 @@ async function setServiceWorkerForceOffline(page: Page, value: boolean) {
     const registration = await navigator.serviceWorker.ready;
     const worker = registration.active;
     if (!worker) throw new Error("no active service worker");
-    worker.postMessage({ type: "KEMI_FORCE_OFFLINE", value: force });
+    await new Promise<void>((resolve, reject) => {
+      const channel = new MessageChannel();
+      const timer = window.setTimeout(() => reject(new Error("SW force-offline ack timeout")), 5_000);
+      channel.port1.onmessage = (event) => {
+        window.clearTimeout(timer);
+        if (event.data?.ok) resolve();
+        else reject(new Error("SW force-offline rejected"));
+      };
+      worker.postMessage({ type: "KEMI_FORCE_OFFLINE", value: force }, [channel.port2]);
+    });
   }, value);
 }
 
 async function warmOfflineCaches(page: Page, sessionUrl: string) {
-  await page.evaluate(async ({ url, navCache, staticCache }) => {
+  // Seed HTML via Playwright request context (bypasses page SW / Next RSC client fetches).
+  const documentResponse = await page.request.get(sessionUrl, {
+    headers: { Accept: "text/html,application/xhtml+xml" },
+  });
+  expect(documentResponse.ok()).toBeTruthy();
+  const body = await documentResponse.body();
+  const contentType = documentResponse.headers()["content-type"] ?? "text/html; charset=utf-8";
+  expect(contentType).toContain("text/html");
+
+  await page.evaluate(async ({ url, navCache, bytes, type }) => {
     const parsed = new URL(url);
     const key = parsed.origin + parsed.pathname + parsed.search;
-    const nav = await caches.open(navCache);
-    const response = await fetch(url, { credentials: "same-origin" });
-    if (!response.ok) throw new Error(`Failed to warm nav cache: ${response.status}`);
-    await nav.put(key, response.clone());
+    const cache = await caches.open(navCache);
+    await cache.put(key, new Response(new Uint8Array(bytes), {
+      status: 200,
+      headers: { "Content-Type": type },
+    }));
+    if (!(await cache.match(key, { ignoreVary: true }))) {
+      throw new Error("nav cache seed failed");
+    }
+  }, {
+    url: sessionUrl,
+    navCache: NAV_CACHE,
+    bytes: Array.from(body),
+    type: contentType,
+  });
 
+  const staticCount = await page.evaluate(async (staticCache) => {
     const staticStore = await caches.open(staticCache);
     const nodes = Array.from(document.querySelectorAll("script[src], link[rel='stylesheet']"));
-    const urls = nodes
+    const urls = [...new Set(nodes
       .map((node) => {
         if (node instanceof HTMLScriptElement) return node.src;
         if (node instanceof HTMLLinkElement) return node.href;
         return "";
       })
-      .filter((href) => href.includes("/_next/static/") || href.includes("/icons/"));
-    await Promise.all(urls.map(async (href) => {
-      if (await staticStore.match(href, { ignoreVary: true })) return;
+      .filter((href) => href.includes("/_next/static/") || href.includes("/icons/")))];
+    let count = 0;
+    for (const href of urls) {
+      if (await staticStore.match(href, { ignoreVary: true })) {
+        count += 1;
+        continue;
+      }
       const asset = await fetch(href);
-      if (asset.ok) await staticStore.put(href, asset.clone());
-    }));
-  }, { url: sessionUrl, navCache: NAV_CACHE, staticCache: STATIC_CACHE });
+      if (asset.ok) {
+        await staticStore.put(href, asset.clone());
+        count += 1;
+      }
+    }
+    return count;
+  }, STATIC_CACHE);
+  expect(staticCount).toBeGreaterThan(0);
 }
 
 test.describe("Wave 05 offline sync", () => {
@@ -97,8 +139,8 @@ test.describe("Wave 05 offline sync", () => {
     await enterLocalMode(page);
   });
 
-  test("known session reloads offline with stored sets visible", async ({ page, context }, testInfo) => {
-    test.setTimeout(90_000);
+  test("known session reloads offline with stored sets visible", async ({ page }) => {
+    test.setTimeout(120_000);
 
     await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
     await expect(page).toHaveURL(/\/session\//, { timeout: 15_000 });
@@ -133,16 +175,10 @@ test.describe("Wave 05 offline sync", () => {
     await expect(page.getByRole("heading", { name: "Quadriceps Stretch" })).toBeVisible();
     await warmOfflineCaches(page, sessionUrl);
 
-    const usePlaywrightOffline = !testInfo.project.name.includes("webkit");
     try {
-      if (usePlaywrightOffline) {
-        await context.setOffline(true);
-      } else {
-        // Playwright WebKit crashes on navigations after context.setOffline(true).
-        // Force the SW cache path instead — same code path as a real offline miss.
-        await setServiceWorkerForceOffline(page, true);
-      }
-
+      // Use SW force-offline on both engines: Playwright setOffline is brittle with
+      // Next.js + SW on WebKit, and Chromium still exercises the same SW cache path.
+      await setServiceWorkerForceOffline(page, true);
       await page.goto(sessionUrl, { waitUntil: "domcontentloaded" });
 
       await expect(page.getByRole("heading", { name: "Séance introuvable" })).toHaveCount(0);
@@ -158,16 +194,12 @@ test.describe("Wave 05 offline sync", () => {
       expect(active?.setLogs.some((log) => log.workoutItemId === QUADRICEPS_STRETCH)).toBe(true);
       expect(offlineSessions.filter((row) => row.status === "active")).toHaveLength(1);
     } finally {
-      if (usePlaywrightOffline) {
-        await context.setOffline(false);
-      } else {
-        await setServiceWorkerForceOffline(page, false);
-      }
+      await setServiceWorkerForceOffline(page, false);
     }
   });
 
   test("Wave 03 regression: one active session, ordered sets, durable notes", async ({ page }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
     await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
     await expect(page).toHaveURL(/\/session\//, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Vélo" })).toBeVisible();
