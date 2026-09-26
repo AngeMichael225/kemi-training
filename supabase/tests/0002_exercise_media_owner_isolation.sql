@@ -83,31 +83,27 @@ select is(
 );
 
 -- Invisible under RLS: UPDATE/DELETE affect 0 rows and do not raise 42501.
+with attempted as (
+  update storage.objects
+  set name = name
+  where bucket_id = 'exercise-media'
+    and name = '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
+  returning 1
+)
 select is(
-  (
-    with attempted as (
-      update storage.objects
-      set name = name
-      where bucket_id = 'exercise-media'
-        and name = '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
-      returning 1
-    )
-    select count(*)::int from attempted
-  ),
+  (select count(*)::int from attempted),
   0,
   'user B cannot update user A storage object'
 );
 
+with attempted as (
+  delete from storage.objects
+  where bucket_id = 'exercise-media'
+    and name = '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
+  returning 1
+)
 select is(
-  (
-    with attempted as (
-      delete from storage.objects
-      where bucket_id = 'exercise-media'
-        and name = '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
-      returning 1
-    )
-    select count(*)::int from attempted
-  ),
+  (select count(*)::int from attempted),
   0,
   'user B cannot delete user A storage object'
 );
