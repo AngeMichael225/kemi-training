@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:offline": "playwright test -c playwright.offline.config.ts",
     "test:e2e:webkit": "playwright test --project=webkit-compact-iphone",
     "import:training": "python scripts/import_training_xlsx.py \"data/source/Training Routine - KEMI S.xlsx\" seed/kemi-training-program.json --report seed/import-report.json",
     "seed": "tsx scripts/seed-supabase.ts",

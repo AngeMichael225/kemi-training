@@ -4,6 +4,9 @@ const mobile = { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } as const
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Offline session resume needs a production server + hashed assets
+  // (see playwright.offline.config.ts / pnpm test:e2e:offline).
+  testIgnore: ["**/offline-sync.spec.ts"],
   timeout: 30_000,
   use: {
     baseURL: "http://127.0.0.1:3000",
