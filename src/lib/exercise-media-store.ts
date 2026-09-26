@@ -276,9 +276,8 @@ function toPersonalMediaRecord(stored: StoredPersonalMediaRecord): PersonalMedia
     mimeType,
     byteValues,
     bytes: byteValues,
-    blob: new Blob([copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength) as ArrayBuffer], {
-      type: mimeType,
-    }),
+    // Pass the Uint8Array view directly — more reliable than slicing the backing buffer.
+    blob: new Blob([copy], { type: mimeType }),
   };
 }
 

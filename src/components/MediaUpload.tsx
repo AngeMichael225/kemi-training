@@ -15,11 +15,16 @@ export function MediaUpload({ exerciseId, onSaved }: { exerciseId: string; onSav
     if (!file) return;
     setBusy(true);
     setStatus("Enregistrement...");
-    const outcome = await uploadExerciseMedia(exerciseId, file);
-    setStatus(outcome.message);
-    setBusy(false);
-    if (outcome.localSaved) onSaved?.();
-    if (inputRef.current) inputRef.current.value = "";
+    try {
+      const outcome = await uploadExerciseMedia(exerciseId, file);
+      setStatus(outcome.message);
+      if (outcome.localSaved) onSaved?.();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Impossible d'enregistrer le média sur cet appareil.");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   }
 
   return (

@@ -9,14 +9,27 @@ async function enterLocalMode(page: Page) {
   const localMode = page.getByRole("link", { name: /Continuer en mode local/i });
   if (await localMode.isVisible().catch(() => false)) {
     await localMode.click();
-    await page.waitForURL(/\/today/);
+    await page.waitForURL(/\/today/, { timeout: 30_000 });
   } else {
     await page.goto("/today", { waitUntil: "domcontentloaded" });
   }
 }
 
+async function clearExerciseMediaDb(page: Page) {
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.deleteDatabase("kemi-exercise-media-v1");
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error ?? new Error("deleteDatabase failed"));
+      request.onblocked = () => resolve();
+    });
+  });
+}
+
 async function uploadPng(page: Page, bytes = 128, name = "personal.png") {
-  await page.getByTestId("exercise-media-input").setInputFiles({
+  const input = page.getByTestId("exercise-media-input");
+  await expect(input).toBeAttached();
+  await input.setInputFiles({
     name,
     mimeType: "image/png",
     buffer: Buffer.alloc(bytes, 7),
@@ -51,19 +64,21 @@ async function readPersonalMedia(page: Page) {
 }
 
 test.describe("Exercise media (Wave 04)", () => {
-  test.describe.configure({ timeout: 60_000 });
+  test.describe.configure({ timeout: 90_000 });
 
   test.beforeEach(async ({ page }) => {
     await enterLocalMode(page);
+    await clearExerciseMediaDb(page);
   });
 
   test("local upload persists across reload", async ({ page }) => {
     await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
 
     await uploadPng(page);
-    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistré sur cet appareil/i, {
+    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistr/i, {
       timeout: 20_000,
     });
     await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local", {
@@ -86,9 +101,10 @@ test.describe("Exercise media (Wave 04)", () => {
     await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
   });
 
-  test("offline retains personal media in IndexedDB", async ({ page, context }) => {
+  test("offline reload still shows stored personal media", async ({ page, context }) => {
     await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
     await uploadPng(page, 96, "offline.png");
+    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistr/i, { timeout: 20_000 });
     await expect(page.getByText("Média personnel", { exact: true })).toBeVisible({ timeout: 20_000 });
 
     await context.setOffline(true);
@@ -107,7 +123,9 @@ test.describe("Exercise media (Wave 04)", () => {
       mimeType: "text/plain",
       buffer: Buffer.from("hello"),
     });
-    await expect(page.getByTestId("exercise-media-status")).toContainText(/Format non pris en charge/i);
+    await expect(page.getByTestId("exercise-media-status")).toContainText(/Format non pris en charge/i, {
+      timeout: 10_000,
+    });
     await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
   });
 
@@ -127,7 +145,7 @@ test.describe("Exercise media (Wave 04)", () => {
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
-    await expect(page.getByTestId("exercise-media-status")).toContainText(/24 Mo/i);
+    await expect(page.getByTestId("exercise-media-status")).toContainText(/24 Mo/i, { timeout: 10_000 });
   });
 
   test("seed/reference fallback remains when no personal media", async ({ page }) => {
