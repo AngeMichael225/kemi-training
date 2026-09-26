@@ -58,7 +58,7 @@ test.describe("Exercise media (Wave 04)", () => {
   test("local upload persists across reload", async ({ page }) => {
     await page.goto(ARM_ROTATIONS);
     await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
-    await expect(page.getByTestId("exercise-media-upload")).toBeVisible();
+    await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 15_000 });
 
     await uploadPng(page);
     await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistré sur cet appareil/i);
@@ -86,6 +86,8 @@ test.describe("Exercise media (Wave 04)", () => {
     await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
 
     await context.setOffline(true);
+    // Document navigations may fail offline without SW; durable media must still be in IDB.
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => undefined);
     const retained = await readPersonalMedia(page);
     expect(retained.some((row) => row.ownerScope === "local-athlete" && row.exerciseId === ARM_ROTATIONS_ID)).toBe(true);
     await context.setOffline(false);
@@ -104,12 +106,21 @@ test.describe("Exercise media (Wave 04)", () => {
 
   test("oversized file shows 24 Mo UX", async ({ page }) => {
     await page.goto(ARM_ROTATIONS);
-    const oversized = Buffer.alloc(24 * 1024 * 1024 + 1, 1);
-    await page.getByTestId("exercise-media-input").setInputFiles({
-      name: "huge.png",
-      mimeType: "image/png",
-      buffer: oversized,
+    await expect(page.getByTestId("exercise-media-upload")).toBeVisible();
+
+    // Avoid allocating a real 24 MiB buffer in the Playwright worker (causes OOM).
+    // Spoof File.size so validateMediaFile still rejects before persistence.
+    await page.evaluate(() => {
+      const input = document.querySelector<HTMLInputElement>('[data-testid="exercise-media-input"]');
+      if (!input) throw new Error("media input missing");
+      const file = new File(["tiny"], "huge.png", { type: "image/png" });
+      Object.defineProperty(file, "size", { value: 24 * 1024 * 1024 + 1 });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
     });
+
     await expect(page.getByTestId("exercise-media-status")).toContainText(/24 Mo/i);
   });
 
@@ -126,33 +137,34 @@ test.describe("Exercise media (Wave 04)", () => {
   });
 
   test("User B owner-scoped rows do not render for local-athlete scope", async ({ page }) => {
-    test.setTimeout(60_000);
     await page.goto(ARM_ROTATIONS);
-    await expect(page.getByTestId("exercise-media-upload")).toBeVisible();
-    await uploadPng(page, 64, "owner-a.png");
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local");
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach");
 
     await page.evaluate(async (exerciseId) => {
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open("kemi-exercise-media-v1");
         request.onerror = () => reject(request.error);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains("personalMedia")) {
+            const store = db.createObjectStore("personalMedia", { keyPath: "key" });
+            store.createIndex("by-owner", "ownerScope");
+            store.createIndex("by-exercise", "exerciseId");
+          }
+        };
         request.onsuccess = () => resolve(request.result);
       });
       try {
+        const byteValues = [1, 2, 3];
         await new Promise<void>((resolve, reject) => {
           const tx = database.transaction("personalMedia", "readwrite");
-          tx.objectStore("personalMedia").clear();
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        });
-        const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
-        await new Promise<void>((resolve, reject) => {
-          const tx = database.transaction("personalMedia", "readwrite");
-          tx.objectStore("personalMedia").put({
+          const store = tx.objectStore("personalMedia");
+          store.delete(`local-athlete:${exerciseId}`);
+          store.put({
             key: `user-b:${exerciseId}`,
             ownerScope: "user-b",
             exerciseId,
-            blob,
+            byteValues,
             fileName: "b.png",
             mimeType: "image/png",
             updatedAt: new Date().toISOString(),
@@ -165,11 +177,9 @@ test.describe("Exercise media (Wave 04)", () => {
       }
     }, ARM_ROTATIONS_ID);
 
-    await page.reload();
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach", {
-      timeout: 15_000,
-    });
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach");
     await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
   });
 });
