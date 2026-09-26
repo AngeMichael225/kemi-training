@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseSyncBody, type SyncSessionPayload } from "@/lib/sync-payload";
+import { unauthenticatedSyncResponse } from "@/lib/sync-response";
 
 function jsonError(error: string, status: number) {
   return NextResponse.json({ ok: false, error }, { status });
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
 
   const supabase = await createClient();
   const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError || !auth.user) return NextResponse.json({ ok: false }, { status: 401 });
+  // Always JSON 401 — never an HTML login redirect. Proxy also skips /api/*.
+  if (authError || !auth.user) return unauthenticatedSyncResponse();
 
   const parsed = parseSyncBody(await request.json().catch(() => null));
   if (!parsed.ok) return jsonError(parsed.error, 400);
