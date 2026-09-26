@@ -5,6 +5,9 @@ const MEDIA_CACHE = "kemi-media-v2";
 const KEEP_CACHES = new Set([SHELL_CACHE, STATIC_CACHE, MEDIA_CACHE]);
 const SHELL = ["/offline.html", "/icons/kemi-icon.svg", "/icons/kemi-maskable.svg"];
 
+/** Test/harness flag: skip network and answer from caches (WebKit cannot use Playwright setOffline). */
+let forceOffline = false;
+
 function isSessionNavigation(url) {
   return url.origin === self.location.origin && url.pathname.startsWith("/session/");
 }
@@ -22,6 +25,18 @@ async function offlineFallback() {
     { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
   );
 }
+
+async function matchSessionDocument(url) {
+  const cache = await caches.open(NAV_CACHE);
+  const key = sessionCacheKey(url);
+  return (await cache.match(key, { ignoreVary: true })) || (await cache.match(key));
+}
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "KEMI_FORCE_OFFLINE") {
+    forceOffline = Boolean(event.data.value);
+  }
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL)));
@@ -53,6 +68,9 @@ self.addEventListener("fetch", (event) => {
       caches.open(STATIC_CACHE).then(async (cache) => {
         const cached = (await cache.match(request, { ignoreVary: true })) || (await cache.match(request));
         if (cached) return cached;
+        if (forceOffline) {
+          return new Response("", { status: 503, statusText: "offline" });
+        }
         const response = await fetch(request);
         if (response.ok) cache.put(request, response.clone());
         return response;
@@ -66,6 +84,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       caches.open(MEDIA_CACHE).then(async (cache) => {
         const cached = (await cache.match(request, { ignoreVary: true })) || (await cache.match(request));
+        if (forceOffline) return cached || new Response("", { status: 503, statusText: "offline" });
         const network = fetch(request).then((response) => {
           if (response.ok || response.type === "opaque") cache.put(request, response.clone());
           return response;
@@ -82,20 +101,23 @@ self.addEventListener("fetch", (event) => {
   // offline.html remains the last-resort fallback.
   if (request.mode === "navigate") {
     event.respondWith((async () => {
+      if (forceOffline) {
+        if (isSessionNavigation(url)) {
+          const cached = await matchSessionDocument(url);
+          if (cached) return cached;
+        }
+        return offlineFallback();
+      }
       try {
         const response = await fetch(request);
         if (response.ok && isSessionNavigation(url)) {
-          const copy = response.clone();
-          event.waitUntil(
-            caches.open(NAV_CACHE).then((cache) => cache.put(sessionCacheKey(url), copy)),
-          );
+          const cache = await caches.open(NAV_CACHE);
+          await cache.put(sessionCacheKey(url), response.clone());
         }
         return response;
       } catch {
         if (isSessionNavigation(url)) {
-          const cache = await caches.open(NAV_CACHE);
-          const key = sessionCacheKey(url);
-          const cached = (await cache.match(key, { ignoreVary: true })) || (await cache.match(key));
+          const cached = await matchSessionDocument(url);
           if (cached) return cached;
         }
         return offlineFallback();

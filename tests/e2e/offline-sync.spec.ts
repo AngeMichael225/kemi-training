@@ -57,6 +57,15 @@ async function registerAndControlServiceWorker(page: Page) {
   }).toBe(true);
 }
 
+async function setServiceWorkerForceOffline(page: Page, value: boolean) {
+  await page.evaluate(async (force) => {
+    const registration = await navigator.serviceWorker.ready;
+    const worker = registration.active;
+    if (!worker) throw new Error("no active service worker");
+    worker.postMessage({ type: "KEMI_FORCE_OFFLINE", value: force });
+  }, value);
+}
+
 async function warmOfflineCaches(page: Page, sessionUrl: string) {
   await page.evaluate(async ({ url, navCache, staticCache }) => {
     const parsed = new URL(url);
@@ -88,7 +97,7 @@ test.describe("Wave 05 offline sync", () => {
     await enterLocalMode(page);
   });
 
-  test("known session reloads offline with stored sets visible", async ({ page, context }) => {
+  test("known session reloads offline with stored sets visible", async ({ page, context }, testInfo) => {
     test.setTimeout(90_000);
 
     await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
@@ -124,9 +133,16 @@ test.describe("Wave 05 offline sync", () => {
     await expect(page.getByRole("heading", { name: "Quadriceps Stretch" })).toBeVisible();
     await warmOfflineCaches(page, sessionUrl);
 
+    const usePlaywrightOffline = !testInfo.project.name.includes("webkit");
     try {
-      await context.setOffline(true);
-      // WebKit is brittle with reload()+offline; goto the known session URL instead.
+      if (usePlaywrightOffline) {
+        await context.setOffline(true);
+      } else {
+        // Playwright WebKit crashes on navigations after context.setOffline(true).
+        // Force the SW cache path instead — same code path as a real offline miss.
+        await setServiceWorkerForceOffline(page, true);
+      }
+
       await page.goto(sessionUrl, { waitUntil: "domcontentloaded" });
 
       await expect(page.getByRole("heading", { name: "Séance introuvable" })).toHaveCount(0);
@@ -142,7 +158,11 @@ test.describe("Wave 05 offline sync", () => {
       expect(active?.setLogs.some((log) => log.workoutItemId === QUADRICEPS_STRETCH)).toBe(true);
       expect(offlineSessions.filter((row) => row.status === "active")).toHaveLength(1);
     } finally {
-      await context.setOffline(false);
+      if (usePlaywrightOffline) {
+        await context.setOffline(false);
+      } else {
+        await setServiceWorkerForceOffline(page, false);
+      }
     }
   });
 
