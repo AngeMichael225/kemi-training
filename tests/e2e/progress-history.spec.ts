@@ -151,7 +151,8 @@ test.describe("Wave 06 progress history", () => {
     await expect(page.getByText(/Estimated 1RM/i)).toBeVisible();
     await expect(page.getByText(/56\.3|56\.2/)).toBeVisible();
 
-    await page.getByRole("link", { name: /Progression/i }).click();
+    // Strength-test CTA and bottom nav both say Progression — avoid strict-mode clash.
+    await page.goto("/progress");
     await expect(page).toHaveURL(/\/progress/);
     await expect(page.getByTestId("strength-test-result")).toContainText("Back Squat");
     await expect(page.getByTestId("strength-test-result")).toContainText(/Estimated 1RM/i);
