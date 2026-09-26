@@ -96,15 +96,15 @@ select is(
   'user B cannot update user A storage object'
 );
 
-with attempted as (
-  delete from storage.objects
-  where bucket_id = 'exercise-media'
-    and name = '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
-  returning 1
-)
-select is(
-  (select count(*)::int from attempted),
-  0,
+-- Direct DELETE on storage.objects is blocked by storage.protect_delete (not silent 0-row RLS).
+select throws_ok(
+  format(
+    'delete from storage.objects where bucket_id = %L and name = %L',
+    'exercise-media',
+    '20000000-0000-4000-8000-0000000000a1'::text || '/owned.png'
+  ),
+  '42501',
+  null,
   'user B cannot delete user A storage object'
 );
 
