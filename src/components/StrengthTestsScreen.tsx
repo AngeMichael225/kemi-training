@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import type { StrengthTestResultLocal, StrengthTestSeed } from "@/lib/training-model";
@@ -100,11 +101,14 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
         <section className="card card-pad card-elevated stack" style={{ minHeight: "54dvh", justifyContent: "space-between" }}>
           <div className="workout-index workout-index-accent" style={{ width: 64, height: 64, borderRadius: 22 }}><Icon name="trophy" size={28} /></div>
           <div><span className="caption">Estimated 1RM - Brzycki</span><div className="rest-clock" style={{ fontSize: "clamp(4rem, 18vw, 7rem)", marginTop: 8 }}>{visibleEstimate?.toFixed(1) ?? "--"}</div><div className="h2">{visibleEstimate ? unit : ""}</div><p className="small muted">Il s’agit d’une estimation calculee a partir de la derniere serie renseignee, pas d’un 1RM mesure.</p></div>
-          <button type="button" className="button button-secondary" onClick={() => { setSavedResult(null); setSetIndex(0); setActuals(test.sets.map((set) => ({
-            weight: set.weight === null ? null : displayWeight(set.weight, set.weight_unit ?? "kg", unit).value,
-            reps: set.repetitions,
-            completed: false,
-          }))); }}><Icon name="rotate-left" size={18} /> Refaire le test</button>
+          <div className="grid-2">
+            <button type="button" className="button button-secondary" onClick={() => { setSavedResult(null); setSetIndex(0); setActuals(test.sets.map((set) => ({
+              weight: set.weight === null ? null : displayWeight(set.weight, set.weight_unit ?? "kg", unit).value,
+              reps: set.repetitions,
+              completed: false,
+            }))); }}><Icon name="rotate-left" size={18} /> Refaire le test</button>
+            <Link href="/progress" className="button button-primary">Progression <Icon name="arrow-right" size={18} /></Link>
+          </div>
         </section>
       </div>
     );

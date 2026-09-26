@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { LocalWorkoutSession } from "@/lib/training-model";
 import { getCompletedSessions, getPreferredWeightUnit } from "@/lib/offline-db";
-import { convertWeight, type WeightUnit } from "@/lib/units";
+import type { WeightUnit } from "@/lib/units";
 import { formatDateTime } from "@/lib/format";
+import { exerciseHistoryRows } from "@/lib/progress-data";
 
 export function ExerciseHistory({ exerciseId }: { exerciseId: string }) {
   const [sessions, setSessions] = useState<LocalWorkoutSession[]>([]);
@@ -17,16 +18,7 @@ export function ExerciseHistory({ exerciseId }: { exerciseId: string }) {
     });
   }, []);
 
-  const rows = useMemo(() => sessions.flatMap((session) => session.setLogs
-    .filter((log) => log.exerciseId === exerciseId)
-    .map((log) => {
-      const displayWeight = log.actualWeight === null || !log.weightUnit
-        ? null
-        : log.weightUnit === unit
-          ? log.actualWeight
-          : convertWeight(log.actualWeight, log.weightUnit, unit);
-      return { ...log, displayWeight, session };
-    })), [exerciseId, sessions, unit]);
+  const rows = useMemo(() => exerciseHistoryRows(sessions, exerciseId, unit), [exerciseId, sessions, unit]);
 
   if (!rows.length) return <div className="empty-state">Aucune performance enregistrée pour ce mouvement pour le moment.</div>;
 
@@ -37,7 +29,7 @@ export function ExerciseHistory({ exerciseId }: { exerciseId: string }) {
       {rows.slice(0, 5).map((row) => (
         <div key={row.id} className="row-between">
           <div><strong>{row.displayWeight === null ? "Charge non saisie" : `${row.displayWeight.toFixed(row.displayWeight % 1 ? 1 : 0)} ${unit}`} {row.actualReps !== null ? `× ${row.actualReps}` : ""}</strong><div className="caption" style={{ marginTop: 3 }}>{formatDateTime(row.completedAt)}</div></div>
-          <span className="caption">S{row.session.weekNumber} J{row.session.dayNumber}</span>
+          <span className="caption">S{row.weekNumber} J{row.dayNumber}</span>
         </div>
       ))}
     </section>
