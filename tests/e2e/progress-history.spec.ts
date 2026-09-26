@@ -11,6 +11,15 @@ async function enterLocalMode(page: Page) {
   } else {
     await page.goto("/today");
   }
+  await expect(page.getByRole("heading", { name: /Bonjour Kemi/i })).toBeVisible();
+}
+
+async function startWorkoutFromToday(page: Page) {
+  const start = page.getByRole("button", { name: /Commencer la s.ance/i }).first();
+  await expect(start).toBeVisible();
+  await expect(start).toBeEnabled();
+  await start.click();
+  await expect(page).toHaveURL(/\/session\//, { timeout: 15_000 });
 }
 
 async function skipRestIfPresent(page: Page) {
@@ -46,8 +55,7 @@ test.describe("Wave 06 progress history", () => {
   });
 
   test("completed workout appears in Progress after navigation and reload; active does not inflate", async ({ page }) => {
-    await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
-    await expect(page).toHaveURL(/\/session\//);
+    await startWorkoutFromToday(page);
     const sessionId = new URL(page.url()).pathname.split("/").pop()!;
 
     await putSession(page, {
@@ -128,8 +136,7 @@ test.describe("Wave 06 progress history", () => {
   });
 
   test("active-only session is excluded from Progress completed count", async ({ page }) => {
-    await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
-    await expect(page).toHaveURL(/\/session\//);
+    await startWorkoutFromToday(page);
     await page.goto("/progress");
     await expect(page.getByTestId("completed-session-count")).toHaveText("0");
     await page.reload();
