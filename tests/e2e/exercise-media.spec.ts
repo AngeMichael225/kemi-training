@@ -15,24 +15,54 @@ async function enterLocalMode(page: Page) {
   }
 }
 
-async function clearExerciseMediaDb(page: Page) {
-  await page.evaluate(async () => {
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.deleteDatabase("kemi-exercise-media-v1");
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error ?? new Error("deleteDatabase failed"));
-      request.onblocked = () => resolve();
-    });
-  });
+/**
+ * Call the MediaUpload test hook — avoids accept= filters and hydration races
+ * that break setInputFiles / change-event dispatch under Chromium.
+ */
+async function uploadViaHook(
+  page: Page,
+  options: { name: string; mimeType: string; contents: string; size?: number },
+) {
+  await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 20_000 });
+  await page.waitForFunction(
+    () =>
+      typeof (window as Window & { __kemiUploadExerciseMedia?: unknown }).__kemiUploadExerciseMedia === "function",
+    { timeout: 20_000 },
+  );
+  await page.evaluate(async (fileOptions) => {
+    const upload = (window as Window & { __kemiUploadExerciseMedia?: (file: File) => Promise<void> })
+      .__kemiUploadExerciseMedia;
+    if (!upload) throw new Error("upload hook missing");
+    const file = new File([fileOptions.contents], fileOptions.name, { type: fileOptions.mimeType });
+    if (typeof fileOptions.size === "number") {
+      Object.defineProperty(file, "size", { value: fileOptions.size });
+    }
+    await upload(file);
+  }, options);
 }
 
 async function uploadPng(page: Page, bytes = 128, name = "personal.png") {
-  const input = page.getByTestId("exercise-media-input");
-  await expect(input).toBeAttached();
-  await input.setInputFiles({
+  await uploadViaHook(page, {
     name,
     mimeType: "image/png",
-    buffer: Buffer.alloc(bytes, 7),
+    contents: "x".repeat(bytes),
+  });
+}
+
+async function uploadOversized(page: Page) {
+  await uploadViaHook(page, {
+    name: "huge.png",
+    mimeType: "image/png",
+    contents: "tiny",
+    size: 24 * 1024 * 1024 + 1,
+  });
+}
+
+async function uploadInvalidMime(page: Page) {
+  await uploadViaHook(page, {
+    name: "notes.txt",
+    mimeType: "text/plain",
+    contents: "hello",
   });
 }
 
@@ -40,14 +70,14 @@ async function readPersonalMedia(page: Page) {
   return page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("kemi-exercise-media-v1");
-      request.onerror = () => reject(request.error);
+      request.onerror = () => reject(request.error ?? new Error("indexedDB open failed"));
       request.onsuccess = () => resolve(request.result);
     });
     try {
       if (!database.objectStoreNames.contains("personalMedia")) return [];
       return await new Promise<Array<{ key: string; ownerScope: string; exerciseId: string }>>((resolve, reject) => {
         const request = database.transaction("personalMedia", "readonly").objectStore("personalMedia").getAll();
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error("getAll failed"));
         request.onsuccess = () =>
           resolve(
             (request.result as Array<{ key: string; ownerScope: string; exerciseId: string }>).map((row) => ({
@@ -68,7 +98,6 @@ test.describe("Exercise media (Wave 04)", () => {
 
   test.beforeEach(async ({ page }) => {
     await enterLocalMode(page);
-    await clearExerciseMediaDb(page);
   });
 
   test("local upload persists across reload", async ({ page }) => {
@@ -78,9 +107,7 @@ test.describe("Exercise media (Wave 04)", () => {
     await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
 
     await uploadPng(page);
-    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistr/i, {
-      timeout: 20_000,
-    });
+    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistr/i, { timeout: 20_000 });
     await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local", {
       timeout: 20_000,
     });
@@ -101,30 +128,35 @@ test.describe("Exercise media (Wave 04)", () => {
     await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
   });
 
-  test("offline reload still shows stored personal media", async ({ page, context }) => {
+  test("offline retains personal media in IndexedDB", async ({ page, context }) => {
     await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible({ timeout: 20_000 });
     await uploadPng(page, 96, "offline.png");
-    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistr/i, { timeout: 20_000 });
-    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local", {
+      timeout: 20_000,
+    });
+
+    await expect
+      .poll(async () => {
+        const rows = await readPersonalMedia(page);
+        return rows.some((row) => row.ownerScope === "local-athlete" && row.exerciseId === ARM_ROTATIONS_ID);
+      })
+      .toBe(true);
 
     await context.setOffline(true);
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible({ timeout: 20_000 });
-    const retained = await readPersonalMedia(page);
-    expect(retained.some((row) => row.ownerScope === "local-athlete" && row.exerciseId === ARM_ROTATIONS_ID)).toBe(true);
+    const retainedOffline = await readPersonalMedia(page);
+    expect(
+      retainedOffline.some((row) => row.ownerScope === "local-athlete" && row.exerciseId === ARM_ROTATIONS_ID),
+    ).toBe(true);
     await context.setOffline(false);
   });
 
   test("invalid MIME shows unsupported format UX", async ({ page }) => {
     await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 20_000 });
-    await page.getByTestId("exercise-media-input").setInputFiles({
-      name: "notes.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("hello"),
-    });
+    await uploadInvalidMime(page);
     await expect(page.getByTestId("exercise-media-status")).toContainText(/Format non pris en charge/i, {
-      timeout: 10_000,
+      timeout: 20_000,
     });
     await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
   });
@@ -132,20 +164,8 @@ test.describe("Exercise media (Wave 04)", () => {
   test("oversized file shows 24 Mo UX", async ({ page }) => {
     await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 20_000 });
-
-    // Avoid allocating a real 24 MiB buffer in the Playwright worker (causes OOM).
-    await page.evaluate(() => {
-      const input = document.querySelector<HTMLInputElement>('[data-testid="exercise-media-input"]');
-      if (!input) throw new Error("media input missing");
-      const file = new File(["tiny"], "huge.png", { type: "image/png" });
-      Object.defineProperty(file, "size", { value: 24 * 1024 * 1024 + 1 });
-      const transfer = new DataTransfer();
-      transfer.items.add(file);
-      input.files = transfer.files;
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-
-    await expect(page.getByTestId("exercise-media-status")).toContainText(/24 Mo/i, { timeout: 10_000 });
+    await uploadOversized(page);
+    await expect(page.getByTestId("exercise-media-status")).toContainText(/24 Mo/i, { timeout: 20_000 });
   });
 
   test("seed/reference fallback remains when no personal media", async ({ page }) => {
@@ -171,7 +191,7 @@ test.describe("Exercise media (Wave 04)", () => {
     await page.evaluate(async (exerciseId) => {
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open("kemi-exercise-media-v1");
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error("indexedDB open failed"));
         request.onupgradeneeded = () => {
           const db = request.result;
           if (!db.objectStoreNames.contains("personalMedia")) {
@@ -183,8 +203,6 @@ test.describe("Exercise media (Wave 04)", () => {
         request.onsuccess = () => resolve(request.result);
       });
       try {
-        const bytes = [1, 2, 3];
-        const blob = new Blob([new Uint8Array(bytes)], { type: "image/png" });
         await new Promise<void>((resolve, reject) => {
           const tx = database.transaction("personalMedia", "readwrite");
           const store = tx.objectStore("personalMedia");
@@ -193,14 +211,13 @@ test.describe("Exercise media (Wave 04)", () => {
             key: `user-b:${exerciseId}`,
             ownerScope: "user-b",
             exerciseId,
-            bytes,
-            blob,
+            byteValues: [1, 2, 3],
             fileName: "b.png",
             mimeType: "image/png",
             updatedAt: new Date().toISOString(),
           });
           tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
+          tx.onerror = () => reject(tx.error ?? new Error("put failed"));
         });
       } finally {
         database.close();

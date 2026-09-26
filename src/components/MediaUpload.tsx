@@ -1,24 +1,24 @@
 ﻿"use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
-import { ALLOWED_MEDIA_MIME_TYPES, uploadExerciseMedia } from "@/lib/exercise-media-store";
-
-const ACCEPT = ALLOWED_MEDIA_MIME_TYPES.join(",");
+import { uploadExerciseMedia } from "@/lib/exercise-media-store";
 
 export function MediaUpload({ exerciseId, onSaved }: { exerciseId: string; onSaved?: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const onSavedRef = useRef(onSaved);
+  onSavedRef.current = onSaved;
 
-  async function handleFile(file?: File) {
+  async function handleFile(file?: File | null) {
     if (!file) return;
     setBusy(true);
     setStatus("Enregistrement...");
     try {
       const outcome = await uploadExerciseMedia(exerciseId, file);
       setStatus(outcome.message);
-      if (outcome.localSaved) onSaved?.();
+      if (outcome.localSaved) onSavedRef.current?.();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Impossible d'enregistrer le média sur cet appareil.");
     } finally {
@@ -27,12 +27,26 @@ export function MediaUpload({ exerciseId, onSaved }: { exerciseId: string; onSav
     }
   }
 
+  const handleFileRef = useRef(handleFile);
+  handleFileRef.current = handleFile;
+
+  // E2E hook — avoids accept= / hydration races with hidden file inputs under Chromium.
+  useEffect(() => {
+    const target = window as Window & { __kemiUploadExerciseMedia?: (file: File) => Promise<void> };
+    target.__kemiUploadExerciseMedia = async (file: File) => {
+      await handleFileRef.current(file);
+    };
+    return () => {
+      delete target.__kemiUploadExerciseMedia;
+    };
+  }, [exerciseId]);
+
   return (
     <div className="stack">
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPT}
+        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
         hidden
         data-testid="exercise-media-input"
         onChange={(event) => void handleFile(event.target.files?.[0])}
@@ -47,11 +61,9 @@ export function MediaUpload({ exerciseId, onSaved }: { exerciseId: string; onSav
         {busy ? <Icon name="cloud-upload" size={18} /> : <Icon name="picture" size={18} />}
         {busy ? "Enregistrement..." : "Ajouter mon media"}
       </button>
-      {status ? (
-        <p className="caption" role="status" data-testid="exercise-media-status" style={{ margin: 0 }}>
-          {status}
-        </p>
-      ) : null}
+      <p className="caption" role="status" data-testid="exercise-media-status" style={{ margin: 0 }} aria-live="polite">
+        {status || "\u00a0"}
+      </p>
     </div>
   );
 }
