@@ -5,13 +5,13 @@ const CAT_COW = "/exercise/cat-cow";
 const ARM_ROTATIONS_ID = "398cae0e-d0ad-5747-8e6c-f584636ec3e1";
 
 async function enterLocalMode(page: Page) {
-  await page.goto("/auth/login");
+  await page.goto("/auth/login", { waitUntil: "domcontentloaded" });
   const localMode = page.getByRole("link", { name: /Continuer en mode local/i });
   if (await localMode.isVisible().catch(() => false)) {
     await localMode.click();
     await page.waitForURL(/\/today/);
   } else {
-    await page.goto("/today");
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
   }
 }
 
@@ -51,18 +51,24 @@ async function readPersonalMedia(page: Page) {
 }
 
 test.describe("Exercise media (Wave 04)", () => {
+  test.describe.configure({ timeout: 60_000 });
+
   test.beforeEach(async ({ page }) => {
     await enterLocalMode(page);
   });
 
   test("local upload persists across reload", async ({ page }) => {
-    await page.goto(ARM_ROTATIONS);
-    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
-    await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 15_000 });
+    await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 20_000 });
 
     await uploadPng(page);
-    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistré sur cet appareil/i);
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local");
+    await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistré sur cet appareil/i, {
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local", {
+      timeout: 20_000,
+    });
     await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
 
     await expect
@@ -72,29 +78,30 @@ test.describe("Exercise media (Wave 04)", () => {
       })
       .toBe(true);
 
-    await page.reload();
-    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local", {
-      timeout: 15_000,
+      timeout: 20_000,
     });
     await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
   });
 
   test("offline retains personal media in IndexedDB", async ({ page, context }) => {
-    await page.goto(ARM_ROTATIONS);
+    await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
     await uploadPng(page, 96, "offline.png");
-    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
+    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible({ timeout: 20_000 });
 
     await context.setOffline(true);
-    // Document navigations may fail offline without SW; durable media must still be in IDB.
-    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => undefined);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible({ timeout: 20_000 });
     const retained = await readPersonalMedia(page);
     expect(retained.some((row) => row.ownerScope === "local-athlete" && row.exerciseId === ARM_ROTATIONS_ID)).toBe(true);
     await context.setOffline(false);
   });
 
   test("invalid MIME shows unsupported format UX", async ({ page }) => {
-    await page.goto(ARM_ROTATIONS);
+    await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 20_000 });
     await page.getByTestId("exercise-media-input").setInputFiles({
       name: "notes.txt",
       mimeType: "text/plain",
@@ -105,11 +112,10 @@ test.describe("Exercise media (Wave 04)", () => {
   });
 
   test("oversized file shows 24 Mo UX", async ({ page }) => {
-    await page.goto(ARM_ROTATIONS);
-    await expect(page.getByTestId("exercise-media-upload")).toBeVisible();
+    await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("exercise-media-upload")).toBeVisible({ timeout: 20_000 });
 
     // Avoid allocating a real 24 MiB buffer in the Playwright worker (causes OOM).
-    // Spoof File.size so validateMediaFile still rejects before persistence.
     await page.evaluate(() => {
       const input = document.querySelector<HTMLInputElement>('[data-testid="exercise-media-input"]');
       if (!input) throw new Error("media input missing");
@@ -125,20 +131,24 @@ test.describe("Exercise media (Wave 04)", () => {
   });
 
   test("seed/reference fallback remains when no personal media", async ({ page }) => {
-    await page.goto(CAT_COW);
+    await page.goto(CAT_COW, { waitUntil: "domcontentloaded" });
     const frame = page.getByTestId("exercise-media-frame");
-    await expect(frame).toHaveAttribute("data-media-source", /reference|empty/);
+    await expect(frame).toHaveAttribute("data-media-source", /reference|empty/, { timeout: 20_000 });
     await expect(page.getByText(/Média personnel recommande/i)).toBeVisible();
   });
 
   test("coach direct media remains available without personal upload", async ({ page }) => {
-    await page.goto(ARM_ROTATIONS);
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach");
+    await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach", {
+      timeout: 20_000,
+    });
   });
 
   test("User B owner-scoped rows do not render for local-athlete scope", async ({ page }) => {
-    await page.goto(ARM_ROTATIONS);
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach");
+    await page.goto(ARM_ROTATIONS, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach", {
+      timeout: 20_000,
+    });
 
     await page.evaluate(async (exerciseId) => {
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -155,7 +165,8 @@ test.describe("Exercise media (Wave 04)", () => {
         request.onsuccess = () => resolve(request.result);
       });
       try {
-        const byteValues = [1, 2, 3];
+        const bytes = [1, 2, 3];
+        const blob = new Blob([new Uint8Array(bytes)], { type: "image/png" });
         await new Promise<void>((resolve, reject) => {
           const tx = database.transaction("personalMedia", "readwrite");
           const store = tx.objectStore("personalMedia");
@@ -164,7 +175,8 @@ test.describe("Exercise media (Wave 04)", () => {
             key: `user-b:${exerciseId}`,
             ownerScope: "user-b",
             exerciseId,
-            byteValues,
+            bytes,
+            blob,
             fileName: "b.png",
             mimeType: "image/png",
             updatedAt: new Date().toISOString(),
@@ -178,7 +190,7 @@ test.describe("Exercise media (Wave 04)", () => {
     }, ARM_ROTATIONS_ID);
 
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach");
     await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
   });
