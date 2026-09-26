@@ -9,7 +9,11 @@ export function MediaUpload({ exerciseId, onSaved }: { exerciseId: string; onSav
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const onSavedRef = useRef(onSaved);
-  onSavedRef.current = onSaved;
+  const handleFileRef = useRef<(file?: File | null) => Promise<void>>(async () => undefined);
+
+  useEffect(() => {
+    onSavedRef.current = onSaved;
+  }, [onSaved]);
 
   async function handleFile(file?: File | null) {
     if (!file) return;
@@ -27,8 +31,9 @@ export function MediaUpload({ exerciseId, onSaved }: { exerciseId: string; onSav
     }
   }
 
-  const handleFileRef = useRef(handleFile);
-  handleFileRef.current = handleFile;
+  useEffect(() => {
+    handleFileRef.current = handleFile;
+  });
 
   // E2E hook — avoids accept= / hydration races with hidden file inputs under Chromium.
   useEffect(() => {
