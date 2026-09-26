@@ -1,6 +1,7 @@
 "use client";
 
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import type { ExerciseMediaSeed } from "@/lib/training-model";
 import { hasSupabaseBrowserEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
@@ -36,29 +37,30 @@ export type MediaErrorCode =
   | "metadata_insert"
   | "cloud_sync_failed";
 
-export interface PersonalMediaRecord {
-  /** Composite key `${ownerScope}:${exerciseId}` — never exercise-only. */
+/** Durable IndexedDB row — never store Blob (jsdom/IDB corrupt binary fields). */
+interface StoredPersonalMediaRecord {
   key: string;
   ownerScope: string;
   exerciseId: string;
-  /**
-   * Durable payload as a plain number[] — survives IndexedDB structured clone in jsdom
-   * (Uint8Array/ArrayBuffer and Blob alone do not reliably round-trip there).
-   */
-  bytes: number[];
-  blob: Blob;
+  byteValues: number[];
   fileName: string;
   mimeType: string;
   updatedAt: string;
 }
 
-/** Alias kept for callers that prefer the "owned" naming. */
+/** Caller-facing record with a rebuilt Blob. */
+export interface PersonalMediaRecord extends StoredPersonalMediaRecord {
+  blob: Blob;
+  /** Alias of byteValues for older callers. */
+  bytes: number[];
+}
+
 export type OwnedExerciseMedia = PersonalMediaRecord;
 
 interface ExerciseMediaDB extends DBSchema {
   personalMedia: {
     key: string;
-    value: PersonalMediaRecord;
+    value: StoredPersonalMediaRecord;
     indexes: { "by-owner": string; "by-exercise": string };
   };
 }
@@ -121,20 +123,13 @@ export function classifyCloudError(
   const message = typeof error === "string" ? error.toLowerCase() : (error?.message ?? "").toLowerCase();
   const status = typeof error === "string" ? NaN : Number(error?.statusCode ?? error?.status ?? NaN);
 
-  if (
-    status === 413 ||
-    /payload|too large|entity too large|maximum allowed size|file size|size limit/.test(message)
-  ) {
+  if (status === 413 || /payload|too large|entity too large|maximum allowed size|file size|size limit/.test(message)) {
     return "storage_quota";
   }
   if (status === 429 || /quota|storage.*limit|exceeded.*limit|insufficient storage/.test(message)) {
     return "storage_quota";
   }
-  if (
-    status === 0 ||
-    status >= 500 ||
-    /failed to fetch|network|timeout|offline|econn|enotfound|fetch failed/.test(message)
-  ) {
+  if (status === 0 || status >= 500 || /failed to fetch|network|timeout|offline|econn|enotfound|fetch failed/.test(message)) {
     return "cloud_network";
   }
   if (/mime|content.?type|not allowed|unsupported/.test(message)) {
@@ -198,10 +193,6 @@ function db(): Promise<IDBPDatabase<ExerciseMediaDB>> {
   return database;
 }
 
-/**
- * Local review mode → stable `local-athlete` scope.
- * Authenticated sessions → auth user id (no cross-user local leak).
- */
 export async function resolveMediaOwnerScope(): Promise<string> {
   if (hasSupabaseBrowserEnv()) {
     try {
@@ -217,6 +208,80 @@ export async function resolveMediaOwnerScope(): Promise<string> {
 
 export const resolveMediaOwnerId = resolveMediaOwnerScope;
 
+async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
+  const isBrokenObjectString = (bytes: Uint8Array) => {
+    const decoded = new TextDecoder().decode(bytes);
+    return decoded === "[object Blob]" || decoded === "[object File]";
+  };
+
+  // Prefer FileReader — most reliable across jsdom + real browsers for Blob/File binary.
+  if (typeof FileReader !== "undefined") {
+    try {
+      const buffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as ArrayBuffer) ?? new ArrayBuffer(0));
+        reader.onerror = () => reject(reader.error ?? new Error("Failed to read media bytes"));
+        reader.readAsArrayBuffer(blob);
+      });
+      if (buffer.byteLength > 0) {
+        const bytes = new Uint8Array(buffer);
+        if (!isBrokenObjectString(bytes)) return bytes;
+      }
+    } catch {
+      // Fall through to Response / arrayBuffer.
+    }
+  }
+
+  if (typeof Response !== "undefined") {
+    try {
+      const buffer = await new Response(blob).arrayBuffer();
+      if (buffer.byteLength > 0) {
+        const bytes = new Uint8Array(buffer);
+        if (!isBrokenObjectString(bytes)) return bytes;
+      }
+    } catch {
+      // Fall through.
+    }
+  }
+
+  if (typeof blob.arrayBuffer === "function") {
+    const buffer = await blob.arrayBuffer();
+    if (buffer.byteLength > 0) {
+      const bytes = new Uint8Array(buffer);
+      if (!isBrokenObjectString(bytes)) return bytes;
+    }
+  }
+
+  throw new Error("Unable to read media bytes from Blob.");
+}
+
+function coerceByteValues(raw: unknown): number[] {
+  if (Array.isArray(raw)) return raw.map((value) => Number(value) & 0xff);
+  if (raw instanceof Uint8Array) return Array.from(raw);
+  if (raw instanceof ArrayBuffer) return Array.from(new Uint8Array(raw));
+  if (ArrayBuffer.isView(raw)) {
+    return Array.from(new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength));
+  }
+  return [];
+}
+
+function toPersonalMediaRecord(stored: StoredPersonalMediaRecord): PersonalMediaRecord {
+  const byteValues = coerceByteValues(stored.byteValues);
+  const mimeType = stored.mimeType || "application/octet-stream";
+  const bytes = Uint8Array.from(byteValues);
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return {
+    ...stored,
+    mimeType,
+    byteValues,
+    bytes: byteValues,
+    blob: new Blob([copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength) as ArrayBuffer], {
+      type: mimeType,
+    }),
+  };
+}
+
 export async function savePersonalMedia(
   ownerScope: string,
   exerciseId: string,
@@ -225,20 +290,18 @@ export async function savePersonalMedia(
   mimeType: string,
 ): Promise<PersonalMediaRecord> {
   if (!ownerScope.trim()) throw new Error("Exercise media owner scope is required.");
-  // Persist bytes as a plain number[] — Uint8Array can round-trip empty via IndexedDB in jsdom.
-  const byteList = Array.from(await readBlobBytes(blob));
-  const record: PersonalMediaRecord = {
+  const byteValues = Array.from(await readBlobBytes(blob));
+  const stored: StoredPersonalMediaRecord = {
     key: mediaRecordKey(ownerScope, exerciseId),
     ownerScope,
     exerciseId,
-    bytes: byteList,
-    blob: blobFromBytes(new Uint8Array(byteList), mimeType),
+    byteValues,
     fileName,
     mimeType,
     updatedAt: new Date().toISOString(),
   };
   try {
-    await (await db()).put(EXERCISE_MEDIA_STORE, record);
+    await (await db()).put(EXERCISE_MEDIA_STORE, stored);
   } catch (error) {
     if (isQuotaExceededError(error)) {
       throw Object.assign(new Error(messageForMediaError("local_quota")), {
@@ -250,85 +313,15 @@ export async function savePersonalMedia(
     throw error;
   }
   notifyExerciseMediaChanged(exerciseId);
-  return record;
-}
-
-async function readBlobBytes(blob: Blob): Promise<Uint8Array> {
-  if (typeof blob.arrayBuffer === "function") {
-    const buffer = await blob.arrayBuffer();
-    if (buffer.byteLength > 0) {
-      return new Uint8Array(buffer);
-    }
-  }
-  // jsdom often returns an empty ArrayBuffer (and size 0) for text-backed Blobs.
-  if (typeof blob.text === "function") {
-    try {
-      const text = await blob.text();
-      if (text.length > 0) {
-        return new TextEncoder().encode(text);
-      }
-    } catch {
-      // Fall through to other readers.
-    }
-  }
-  if (typeof Response !== "undefined") {
-    const buffer = await new Response(blob).arrayBuffer();
-    if (buffer.byteLength > 0) return new Uint8Array(buffer);
-  }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
-    reader.onerror = () => reject(reader.error ?? new Error("Failed to read media bytes"));
-    reader.readAsArrayBuffer(blob);
-  });
+  return toPersonalMediaRecord(stored);
 }
 
 export const saveExerciseMediaLocal = savePersonalMedia;
 export const saveOwnedExerciseMedia = savePersonalMedia;
 
-function coerceBytes(value: unknown): Uint8Array {
-  if (value instanceof Uint8Array) {
-    const copy = new Uint8Array(value.byteLength);
-    copy.set(value);
-    return copy;
-  }
-  if (value instanceof ArrayBuffer) {
-    return new Uint8Array(value.slice(0));
-  }
-  if (ArrayBuffer.isView(value)) {
-    const view = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-    const copy = new Uint8Array(view.byteLength);
-    copy.set(view);
-    return copy;
-  }
-  if (Array.isArray(value)) return Uint8Array.from(value as number[]);
-  if (value && typeof value === "object" && "length" in (value as object)) {
-    return Uint8Array.from(Array.from(value as ArrayLike<number>));
-  }
-  return new Uint8Array(0);
-}
-
-function blobFromBytes(bytes: Uint8Array, mimeType: string): Blob {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
-  return new Blob([copy.buffer as ArrayBuffer], { type: mimeType });
-}
-
-function rehydratePersonalMediaRecord(record: PersonalMediaRecord): PersonalMediaRecord {
-  const bytes = coerceBytes(record.bytes);
-  const mimeType = record.mimeType || "application/octet-stream";
-  return {
-    ...record,
-    mimeType,
-    bytes: Array.from(bytes),
-    blob: blobFromBytes(bytes, mimeType),
-  };
-}
-
-/** Test/helper: decode stored media bytes without relying on Blob.text(). */
 export function personalMediaText(record: PersonalMediaRecord | undefined): string {
   if (!record) return "";
-  return new TextDecoder().decode(coerceBytes(record.bytes));
+  return new TextDecoder().decode(new Uint8Array(coerceByteValues(record.byteValues ?? record.bytes)));
 }
 
 export async function getPersonalMedia(
@@ -338,7 +331,7 @@ export async function getPersonalMedia(
   if (!ownerScope.trim()) return undefined;
   const record = await (await db()).get(EXERCISE_MEDIA_STORE, mediaRecordKey(ownerScope, exerciseId));
   if (!record || record.ownerScope !== ownerScope) return undefined;
-  return rehydratePersonalMediaRecord(record);
+  return toPersonalMediaRecord(record);
 }
 
 export const getExerciseMediaLocal = getPersonalMedia;
@@ -346,7 +339,7 @@ export const getOwnedExerciseMedia = getPersonalMedia;
 
 export async function listPersonalMediaForOwner(ownerScope: string): Promise<PersonalMediaRecord[]> {
   const rows = await (await db()).getAllFromIndex(EXERCISE_MEDIA_STORE, "by-owner", ownerScope);
-  return rows.map(rehydratePersonalMediaRecord);
+  return rows.map(toPersonalMediaRecord);
 }
 
 export const listExerciseMediaForOwner = listPersonalMediaForOwner;
@@ -357,10 +350,7 @@ export async function deletePersonalMedia(ownerScope: string, exerciseId: string
   notifyExerciseMediaChanged(exerciseId);
 }
 
-/**
- * Signed-URL cloud lookup for personal media.
- * Never uses getPublicUrl — the exercise-media bucket must stay private.
- */
+/** Signed-URL cloud lookup only. Never uses getPublicUrl. */
 export async function fetchOwnedCloudMedia(
   exerciseId: string,
   ownerId: string,
@@ -398,7 +388,7 @@ async function syncPersonalMediaToCloud(
   file: File,
 ): Promise<{ ok: true } | { ok: false; code: MediaErrorCode }> {
   const supabase = createClient();
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-") || "media";
   const storagePath = `${userId}/${exerciseId}/${crypto.randomUUID()}-${safeName}`;
 
   let upload;
@@ -443,9 +433,6 @@ async function syncPersonalMediaToCloud(
   return { ok: true };
 }
 
-/**
- * Saves personal media locally (owner-scoped), then optionally syncs to private Storage.
- */
 export async function uploadExerciseMedia(exerciseId: string, file: File): Promise<UploadExerciseMediaResult> {
   const validation = validateMediaFile(file);
   if (validation) {
@@ -553,8 +540,8 @@ export async function resetExerciseMediaStoreForTests(): Promise<void> {
 export type ResolvedMediaSource =
   | { kind: "personal_local"; url: string; mimeType: string }
   | { kind: "personal_cloud"; url: string; mimeType: string }
-  | { kind: "coach_direct"; media: import("@/lib/training-model").ExerciseMediaSeed }
-  | { kind: "source_reference"; media: import("@/lib/training-model").ExerciseMediaSeed }
+  | { kind: "coach_direct"; media: ExerciseMediaSeed }
+  | { kind: "source_reference"; media: ExerciseMediaSeed }
   | { kind: "empty" };
 
 /**
@@ -567,7 +554,7 @@ export type ResolvedMediaSource =
 export function resolveExerciseMediaSource(input: {
   local: { url: string; mimeType: string } | null;
   cloud: { url: string; mimeType: string } | null;
-  seed: import("@/lib/training-model").ExerciseMediaSeed[];
+  seed: ExerciseMediaSeed[];
 }): ResolvedMediaSource {
   if (input.local) {
     return { kind: "personal_local", url: input.local.url, mimeType: input.local.mimeType };

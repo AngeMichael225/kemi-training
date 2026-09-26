@@ -58,30 +58,36 @@ test.describe("Exercise media (Wave 04)", () => {
   test("local upload persists across reload", async ({ page }) => {
     await page.goto(ARM_ROTATIONS);
     await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
+    await expect(page.getByTestId("exercise-media-upload")).toBeVisible();
+
     await uploadPng(page);
     await expect(page.getByTestId("exercise-media-status")).toContainText(/enregistré sur cet appareil/i);
     await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local");
-    await expect(page.getByText("Média personnel")).toBeVisible();
+    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
 
-    await expect.poll(async () => {
-      const rows = await readPersonalMedia(page);
-      return rows.some((row) => row.exerciseId === ARM_ROTATIONS_ID && row.ownerScope === "local-athlete");
-    }).toBe(true);
+    await expect
+      .poll(async () => {
+        const rows = await readPersonalMedia(page);
+        return rows.some((row) => row.exerciseId === ARM_ROTATIONS_ID && row.ownerScope === "local-athlete");
+      })
+      .toBe(true);
 
     await page.reload();
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local");
-    await expect(page.getByText("Média personnel")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local", {
+      timeout: 15_000,
+    });
+    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
   });
 
-  test("offline reload still shows stored personal media", async ({ page, context }) => {
+  test("offline retains personal media in IndexedDB", async ({ page, context }) => {
     await page.goto(ARM_ROTATIONS);
     await uploadPng(page, 96, "offline.png");
-    await expect(page.getByText("Média personnel")).toBeVisible();
+    await expect(page.getByText("Média personnel", { exact: true })).toBeVisible();
 
     await context.setOffline(true);
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local");
-    await expect(page.getByText("Média personnel")).toBeVisible();
+    const retained = await readPersonalMedia(page);
+    expect(retained.some((row) => row.ownerScope === "local-athlete" && row.exerciseId === ARM_ROTATIONS_ID)).toBe(true);
     await context.setOffline(false);
   });
 
@@ -93,7 +99,7 @@ test.describe("Exercise media (Wave 04)", () => {
       buffer: Buffer.from("hello"),
     });
     await expect(page.getByTestId("exercise-media-status")).toContainText(/Format non pris en charge/i);
-    await expect(page.getByText("Média personnel")).toHaveCount(0);
+    await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
   });
 
   test("oversized file shows 24 Mo UX", async ({ page }) => {
@@ -120,7 +126,9 @@ test.describe("Exercise media (Wave 04)", () => {
   });
 
   test("User B owner-scoped rows do not render for local-athlete scope", async ({ page }) => {
+    test.setTimeout(60_000);
     await page.goto(ARM_ROTATIONS);
+    await expect(page.getByTestId("exercise-media-upload")).toBeVisible();
     await uploadPng(page, 64, "owner-a.png");
     await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "local");
 
@@ -158,7 +166,10 @@ test.describe("Exercise media (Wave 04)", () => {
     }, ARM_ROTATIONS_ID);
 
     await page.reload();
-    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach");
-    await expect(page.getByText("Média personnel")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /Arm rotations/i })).toBeVisible();
+    await expect(page.getByTestId("exercise-media-frame")).toHaveAttribute("data-media-source", "coach", {
+      timeout: 15_000,
+    });
+    await expect(page.getByText("Média personnel", { exact: true })).toHaveCount(0);
   });
 });

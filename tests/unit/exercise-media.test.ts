@@ -102,8 +102,9 @@ describe("exercise media owner-scoped persistence", () => {
   });
 
   it("persists personal media for the same owner after reload semantics", async () => {
-    const blob = new Blob(["png-bytes"], { type: "image/png" });
-    await savePersonalMedia(LOCAL_ATHLETE_SCOPE, EXERCISE_A, blob, "demo.png", "image/png");
+    const bytes = new TextEncoder().encode("png-bytes");
+    const file = new File([bytes], "demo.png", { type: "image/png" });
+    await savePersonalMedia(LOCAL_ATHLETE_SCOPE, EXERCISE_A, file, file.name, file.type);
     const stored = await getPersonalMedia(LOCAL_ATHLETE_SCOPE, EXERCISE_A);
     expect(stored?.mimeType).toBe("image/png");
     expect(stored?.ownerScope).toBe(LOCAL_ATHLETE_SCOPE);
@@ -111,8 +112,20 @@ describe("exercise media owner-scoped persistence", () => {
   });
 
   it("isolates User A media from User B lookups", async () => {
-    await savePersonalMedia(USER_A, EXERCISE_A, new Blob(["a"], { type: "image/jpeg" }), "a.jpg", "image/jpeg");
-    await savePersonalMedia(USER_B, EXERCISE_A, new Blob(["b"], { type: "image/jpeg" }), "b.jpg", "image/jpeg");
+    await savePersonalMedia(
+      USER_A,
+      EXERCISE_A,
+      new File([new TextEncoder().encode("a")], "a.jpg", { type: "image/jpeg" }),
+      "a.jpg",
+      "image/jpeg",
+    );
+    await savePersonalMedia(
+      USER_B,
+      EXERCISE_A,
+      new File([new TextEncoder().encode("b")], "b.jpg", { type: "image/jpeg" }),
+      "b.jpg",
+      "image/jpeg",
+    );
 
     expect(personalMediaText(await getPersonalMedia(USER_A, EXERCISE_A))).toBe("a");
     expect(personalMediaText(await getPersonalMedia(USER_B, EXERCISE_A))).toBe("b");
