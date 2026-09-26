@@ -1,7 +1,7 @@
 "use client";
 
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { LocalWorkoutSession, StrengthTestResultLocal } from "@/lib/training-model";
+import type { LocalWorkoutSession, ProgramWeekSeed, StrengthTestResultLocal, WorkoutDaySeed } from "@/lib/training-model";
 import type { WeightUnit } from "@/lib/units";
 
 interface PendingMutation {
@@ -51,6 +51,7 @@ interface KemiDB extends DBSchema {
 }
 
 let database: Promise<IDBPDatabase<KemiDB>> | null = null;
+let activeSessionChain: Promise<void> = Promise.resolve();
 
 function db(): Promise<IDBPDatabase<KemiDB>> {
   if (!database) {
@@ -76,17 +77,95 @@ function db(): Promise<IDBPDatabase<KemiDB>> {
   return database!;
 }
 
+function pendingSessionMutation(session: LocalWorkoutSession, createdAt: string): PendingMutation {
+  return {
+    id: `session:${session.id}`,
+    type: "session_snapshot",
+    payload: session,
+    createdAt,
+  };
+}
+
 export async function saveSession(session: LocalWorkoutSession, queueSync = true): Promise<void> {
   const databaseInstance = await db();
-  await databaseInstance.put("sessions", session);
+  const tx = databaseInstance.transaction(
+    queueSync ? ["sessions", "pendingMutations"] : ["sessions"],
+    "readwrite",
+  );
+  await tx.objectStore("sessions").put(session);
   if (queueSync) {
-    await databaseInstance.put("pendingMutations", {
-      id: `session:${session.id}`,
-      type: "session_snapshot",
-      payload: session,
-      createdAt: new Date().toISOString(),
-    });
+    await tx.objectStore("pendingMutations").put(pendingSessionMutation(session, new Date().toISOString()));
   }
+  await tx.done;
+}
+
+function blankActiveSession(day: WorkoutDaySeed, week: ProgramWeekSeed, now: string): LocalWorkoutSession {
+  return {
+    id: crypto.randomUUID(),
+    workoutDayId: day.id,
+    workoutTitle: `${week.name} - ${day.title}`,
+    weekNumber: week.week_number,
+    dayNumber: day.day_number,
+    startedAt: now,
+    completedAt: null,
+    status: "active",
+    currentItemIndex: 0,
+    notes: "",
+    exerciseNotes: {},
+    setLogs: [],
+    restTargetEndTime: null,
+    updatedAt: now,
+  };
+}
+
+async function insertOrResumeActiveSession(day: WorkoutDaySeed, week: ProgramWeekSeed): Promise<LocalWorkoutSession> {
+  const databaseInstance = await db();
+  const tx = databaseInstance.transaction(["sessions", "pendingMutations"], "readwrite");
+  const sessions = tx.objectStore("sessions");
+  const actives = await sessions.index("by-status").getAll("active");
+  if (actives.length > 0) {
+    const canonical = actives.reduce((best, candidate) => (
+      candidate.updatedAt.localeCompare(best.updatedAt) > 0 ? candidate : best
+    ));
+    await tx.done;
+    return canonical;
+  }
+
+  const now = new Date().toISOString();
+  const session = blankActiveSession(day, week, now);
+  await sessions.put(session);
+  await tx.objectStore("pendingMutations").put(pendingSessionMutation(session, now));
+  await tx.done;
+  return session;
+}
+
+export function getOrCreateActiveSession(day: WorkoutDaySeed, week: ProgramWeekSeed): Promise<LocalWorkoutSession> {
+  const run = activeSessionChain.then(() => insertOrResumeActiveSession(day, week));
+  activeSessionChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+export async function resetOfflineDatabaseForTests(): Promise<void> {
+  activeSessionChain = Promise.resolve();
+  const pending = database;
+  database = null;
+  if (pending) {
+    try {
+      const instance = await pending;
+      instance.close();
+    } catch {
+      // A failed open is already discarded with the singleton.
+    }
+  }
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase("kemi-training-v1");
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB delete failed"));
+    request.onblocked = () => resolve();
+  });
 }
 
 export async function getSession(id: string): Promise<LocalWorkoutSession | undefined> {
