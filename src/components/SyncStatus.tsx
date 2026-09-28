@@ -44,8 +44,15 @@ export function SyncStatus({ compact = false }: { compact?: boolean }) {
   }, [runSync]);
 
   return (
-    <button type="button" className="sync-indicator" onClick={() => void runSync()} aria-label={`Etat de synchronisation: ${labels[state]}`}>
-      <span className="pill" style={{ minHeight: compact ? 30 : 34, background: "rgba(17,19,21,.88)" }}>
+    <button
+      type="button"
+      className="sync-indicator"
+      data-testid="sync-status"
+      onClick={() => void runSync()}
+      aria-live="polite"
+      aria-label={`Etat de synchronisation: ${labels[state]}`}
+    >
+      <span className="pill" data-compact={compact ? "true" : "false"} style={{ minHeight: compact ? 30 : 34, background: "rgba(17,19,21,.88)" }}>
         {state === "syncing" ? (
           <MotionMoment name="syncing" size={16} fallback={<Icon name="cloud" size={13} />} />
         ) : (

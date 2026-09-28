@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAvailableWeek, getExerciseMedia, trainingSeed } from "@/lib/training-data";
+import { flattenWorkout, getAvailableWeek, getExerciseMedia, getWorkoutDay, trainingSeed } from "@/lib/training-data";
 
 describe("normalized training seed", () => {
   it("contains every imported workbook week and workout day", () => {
@@ -9,6 +9,16 @@ describe("normalized training seed", () => {
 
   it("does not invent weeks beyond the workbook", () => {
     expect(getAvailableWeek(99).week_number).toBe(4);
+  });
+
+  it("flattens a workout day without dropping prescribed items", () => {
+    const day = getWorkoutDay("22a6f767-4aa0-5b1a-80f8-54b8d4c06e54");
+    expect(day).toBeDefined();
+    if (!day) return;
+    const flat = flattenWorkout(day);
+    const expected = day.sections.reduce((sum, section) => sum + section.items.length, 0);
+    expect(flat).toHaveLength(expected);
+    expect(flat[0]?.item.id).toBe(day.sections[0]?.items[0]?.id);
   });
 
   it("retains direct and reference exercise media", () => {

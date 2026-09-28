@@ -11,7 +11,7 @@ import type {
   SessionSetLog,
   WorkoutDaySeed,
 } from "@/lib/training-model";
-import { flattenWorkout } from "@/lib/training-data";
+import { flattenWorkout } from "@/lib/workout-sequence";
 import { getLastPerformance, getPreferredWeightUnit, getSession, saveSession } from "@/lib/offline-db";
 import { applySetCompletion, resolveLoadedSession, targetSets, type SetCompletionInput } from "@/lib/session-mutations";
 import { createSessionStore, type SessionStore } from "@/lib/session-persistence";
@@ -232,7 +232,7 @@ export function SessionRunner({
           <div style={{ textAlign: "center" }}><span className="caption">Semaine {week.week_number} - Jour {day.day_number}</span><div className="small" style={{ fontWeight: 760 }}>{progress}% terminé</div></div>
           <span className="pill"><Icon name="stopwatch" size={13} /> {item.rest_raw ?? "--"}</span>
         </div>
-        <div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
+        <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label={`Progression de la séance ${progress}%`}><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
       </header>
 
       <div className="row-between" style={{ alignItems: "flex-end" }}>

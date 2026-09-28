@@ -117,26 +117,26 @@ export function StrengthTestsScreen({ tests, initialSlug }: { tests: StrengthTes
   return (
     <div className="page-stack">
       <header className="page-heading"><span className="eyebrow">Tests de force</span><h1 className="h1">Un protocole clair, serie par serie.</h1><p className="muted" style={{ margin: 0 }}>Les charges du classeur restent la reference. Tu peux enregistrer ce que tu realises reellement.</p></header>
-      <div className="segmented" aria-label="Choix du test">
-        {tests.map((candidate, index) => <button type="button" key={candidate.id} data-active={index === testIndex} onClick={() => setTestIndex(index)}>{candidate.name}</button>)}
+      <div className="segmented" role="group" aria-label="Choix du test">
+        {tests.map((candidate, index) => <button type="button" key={candidate.id} data-active={index === testIndex} aria-pressed={index === testIndex} onClick={() => setTestIndex(index)}>{candidate.name}</button>)}
       </div>
       <div className="row-between"><div><span className="eyebrow" style={{ fontSize: ".64rem" }}>{test.name}</span><h2 className="h2" style={{ marginTop: 4 }}>Serie {setIndex + 1} / {test.sets.length}</h2></div><strong className="metric">{progress}%</strong></div>
-      <div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
+      <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label={`Progression du test ${progress}%`}><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
 
       <section className="card card-pad stack">
         <div className="row-between"><div><span className="caption">Prescription source</span><div className="h3" style={{ marginTop: 4 }}>{prescribed.weight_raw ?? "Charge non renseignée"}</div></div><span className="pill">{prescribed.rest_raw ?? "--"}</span></div>
         <label className="label">Charge realisee
           <div className="counter-control">
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: Math.max(0, (current.weight ?? 0) - step) })}><Icon name="minus" size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: Math.max(0, (current.weight ?? 0) - step) })} aria-label="Diminuer la charge"><Icon name="minus" size={18} /></button>
             <div className="counter-value">{current.weight ?? "--"} {current.weight !== null ? unit : ""}</div>
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: (current.weight ?? 0) + step })}><Icon name="plus" size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ weight: (current.weight ?? 0) + step })} aria-label="Augmenter la charge"><Icon name="plus" size={18} /></button>
           </div>
         </label>
         <label className="label">Répétitions
           <div className="counter-control">
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: Math.max(0, (current.reps ?? 0) - 1) })}><Icon name="minus" size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: Math.max(0, (current.reps ?? 0) - 1) })} aria-label="Diminuer les répétitions"><Icon name="minus" size={18} /></button>
             <div className="counter-value">{current.reps ?? "--"} reps</div>
-            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: (current.reps ?? 0) + 1 })}><Icon name="plus" size={18} /></button>
+            <button type="button" className="icon-button" onClick={() => patchCurrent({ reps: (current.reps ?? 0) + 1 })} aria-label="Augmenter les répétitions"><Icon name="plus" size={18} /></button>
           </div>
         </label>
         <button type="button" className="button button-primary" onClick={completeSet}><Icon name="check" size={19} /> Serie terminée</button>

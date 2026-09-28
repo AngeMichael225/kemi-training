@@ -44,7 +44,7 @@ export function PreferencesPanel() {
     <div className="stack">
       <section className="card card-pad stack">
         <div className="row"><Icon name="ruler-horizontal" size={18} className="muted" /><div><h2 className="h3">Unites de charge</h2><p className="caption" style={{ margin: "3px 0 0" }}>La valeur source reste intacte. Seul l’affichage est converti.</p></div></div>
-        <div className="segmented"><button type="button" data-active={unit === "kg"} onClick={() => void chooseUnit("kg")}>Kilogrammes</button><button type="button" data-active={unit === "lbs"} onClick={() => void chooseUnit("lbs")}>Livres</button></div>
+        <div className="segmented" role="group" aria-label="Unites de charge"><button type="button" data-active={unit === "kg"} aria-pressed={unit === "kg"} onClick={() => void chooseUnit("kg")}>Kilogrammes</button><button type="button" data-active={unit === "lbs"} aria-pressed={unit === "lbs"} onClick={() => void chooseUnit("lbs")}>Livres</button></div>
       </section>
       <section className="card card-pad stack">
         <PreferenceToggle icon={<Icon name="volume" size={18} />} label="Son du timer" description="Progressive enhancement; la séance fonctionne sans son." checked={sound} onChange={(value) => void toggle("timerSound", value)} />
@@ -59,9 +59,11 @@ export function PreferencesPanel() {
 
 function PreferenceToggle({ icon, label, description, checked, onChange }: { icon: React.ReactNode; label: string; description: string; checked: boolean; onChange: (value: boolean) => void }) {
   return (
-    <label className="row-between" style={{ cursor: "pointer" }}>
+    <label className="row-between preference-toggle">
       <span className="row">{icon}<span><strong>{label}</strong><span className="caption" style={{ display: "block", marginTop: 3 }}>{description}</span></span></span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} style={{ width: 22, height: 22, accentColor: "var(--accent)" }} />
+      <span className="touch-hit">
+        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      </span>
     </label>
   );
 }

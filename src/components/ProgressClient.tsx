@@ -7,7 +7,6 @@ import type { LocalWorkoutSession, StrengthTestResultLocal } from "@/lib/trainin
 import { getCompletedSessions, getPreferredWeightUnit, getStrengthTestResults } from "@/lib/offline-db";
 import { convertWeight, type WeightUnit } from "@/lib/units";
 import { formatDateTime } from "@/lib/format";
-import { getExercise } from "@/lib/training-data";
 import { HistoryChart } from "@/components/HistoryChart";
 import {
   bestEstimated1rmKg,
@@ -19,7 +18,7 @@ import {
   selectCompletedSessions,
 } from "@/lib/progress-data";
 
-export function ProgressClient() {
+export function ProgressClient({ exerciseNames }: { exerciseNames: Record<string, string> }) {
   const [sessions, setSessions] = useState<LocalWorkoutSession[]>([]);
   const [tests, setTests] = useState<StrengthTestResultLocal[]>([]);
   const [unit, setUnit] = useState<WeightUnit>("kg");
@@ -41,8 +40,8 @@ export function ProgressClient() {
   const display1rm = best1rm === null ? 0 : unit === "kg" ? best1rm : convertWeight(best1rm, "kg", "lbs");
 
   const records = useMemo(
-    () => personalRecordsFromSessions(sessions, (exerciseId) => getExercise(exerciseId)?.name ?? "Exercice"),
-    [sessions],
+    () => personalRecordsFromSessions(sessions, (exerciseId) => exerciseNames[exerciseId] ?? "Exercice"),
+    [exerciseNames, sessions],
   );
 
   const recentTestsByName = useMemo(() => recentStrengthTests(tests), [tests]);

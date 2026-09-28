@@ -56,9 +56,43 @@ export function RestTimer({
 
   const seconds = remainingMs / 1000;
   const progress = Math.max(0, Math.min(100, (remainingMs / durationMs) * 100));
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = panelRef.current;
+    if (!node) return;
+    const panel: HTMLDivElement = node;
+    const previously = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    panel.focus();
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onChangeTarget(null);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...panel.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], input, select, textarea")];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    panel.addEventListener("keydown", onKey);
+    return () => {
+      panel.removeEventListener("keydown", onKey);
+      previously?.focus();
+    };
+  }, [onChangeTarget]);
 
   return (
-    <div className="rest-panel" role="dialog" aria-modal="true" aria-label="Minuteur de repos">
+    <div ref={panelRef} className="rest-panel" role="dialog" aria-modal="true" aria-label="Minuteur de repos" tabIndex={-1}>
       <div className="rest-card">
         <div className="row-between"><span className="eyebrow">{finished ? "Repos terminé" : "Repos"}</span><span className="pill">Timer fiable en arrière-plan</span></div>
         <div className="stack" style={{ justifyItems: "center", textAlign: "center" }}>

@@ -6,9 +6,15 @@ import type {
   TrainingSeed,
   WorkoutDaySeed,
   WorkoutItem,
-  WorkoutSectionSeed,
 } from "@/lib/training-model";
 
+export { flattenWorkout } from "@/lib/workout-sequence";
+
+/**
+ * Full workbook seed. Server pages and unit tests only.
+ * Client components must not import this module — it embeds the JSON in the browser bundle.
+ * Pass the small slice a screen needs as serializable props instead.
+ */
 export const trainingSeed = seedJson as unknown as TrainingSeed;
 
 export function parseProgramDate(value: string): Date {
@@ -45,10 +51,6 @@ export function getWorkoutContext(id: string): { week: ProgramWeekSeed; day: Wor
     if (day) return { week, day };
   }
   return undefined;
-}
-
-export function flattenWorkout(day: WorkoutDaySeed): Array<{ section: WorkoutSectionSeed; item: WorkoutItem }> {
-  return day.sections.flatMap((section) => section.items.map((item) => ({ section, item })));
 }
 
 export function getExercise(id: string): ExerciseSeed | undefined {

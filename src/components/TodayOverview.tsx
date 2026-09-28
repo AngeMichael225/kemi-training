@@ -85,7 +85,7 @@ export function TodayOverview({ week, requestedWeek, maxAvailableWeek }: { week:
           </div>
           <strong className="metric" style={{ fontSize: "1.4rem" }}>{weekProgress}%</strong>
         </div>
-        <div className="progress-track" aria-label={`Progression hebdomadaire ${weekProgress}%`}><div className="progress-fill" style={{ width: `${weekProgress}%` }} /></div>
+        <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={weekProgress} aria-label={`Progression hebdomadaire ${weekProgress}%`}><div className="progress-fill" style={{ width: `${weekProgress}%` }} /></div>
         <div className="grid-2">
           <div className="stat-cell"><strong>{streak || "--"}</strong><span><Icon name="flame" size={12} style={{ marginRight: 4 }} />jours avec historique</span></div>
           <div className="stat-cell"><strong>{completed.length}</strong><span>séances terminées</span></div>

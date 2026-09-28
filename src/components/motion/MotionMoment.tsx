@@ -10,8 +10,13 @@ function subscribe(onChange: () => void) {
   return () => query.removeEventListener("change", onChange);
 }
 
-function motionPreferred() {
-  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** `serverSnapshot` is the reduced-motion value used during SSR and hydration. */
+export function usePrefersReducedMotion(serverSnapshot = false) {
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => serverSnapshot,
+  );
 }
 
 export function MotionMoment({
@@ -23,7 +28,7 @@ export function MotionMoment({
   size?: number;
   fallback: React.ReactNode;
 }) {
-  const play = useSyncExternalStore(subscribe, motionPreferred, () => false);
+  const play = !usePrefersReducedMotion(true);
 
   return (
     <div className="motion-moment" style={{ width: size, height: size }} data-motion={name} data-reduced={play ? "false" : "true"}>
