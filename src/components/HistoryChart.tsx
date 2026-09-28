@@ -15,7 +15,7 @@ export function HistoryChart({ values, label }: { values: number[]; label: strin
   return (
     <div className="card card-pad stack">
       <div className="row-between"><h3 className="h3">{label}</h3><span className="pill">{values.length} points</span></div>
-      <svg role="img" aria-label={label} viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
+      <svg role="img" aria-label={label} viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto" }}>
         <line x1="16" x2={width - 16} y1={height - 16} y2={height - 16} stroke="rgba(255,255,255,.12)" />
         <polyline points={points} fill="none" stroke="var(--accent)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
         {points.split(" ").map((point) => {

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Icon } from "@/components/icons/Icon";
+import { usePrefersReducedMotion } from "@/components/motion/MotionMoment";
 import { useEffect, useRef, useState } from "react";
 import type { ExerciseMediaSeed } from "@/lib/training-model";
 import {
@@ -33,10 +34,18 @@ export function ExerciseMedia({
   priority?: boolean;
   revision?: number;
 }) {
+  const reduceMotion = usePrefersReducedMotion(false);
   const [owned, setOwned] = useState<OwnedMedia | null>(null);
   const [playing, setPlaying] = useState(true);
   const [reloadToken, setReloadToken] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!reduceMotion || !element) return;
+    element.pause();
+    setPlaying(false);
+  }, [reduceMotion, owned, reloadToken]);
 
   useEffect(() => {
     function onChanged(event: Event) {
@@ -106,7 +115,7 @@ export function ExerciseMedia({
     if (resolved.mimeType.startsWith("video/")) {
       return (
         <div className="media-frame" data-testid="exercise-media-frame" data-media-source={source}>
-          <video ref={videoRef} src={resolved.url} playsInline muted loop autoPlay preload="metadata" aria-label={alt} />
+          <video ref={videoRef} src={resolved.url} playsInline muted loop={!reduceMotion} autoPlay={!reduceMotion} preload="metadata" aria-label={alt} />
           <div className="media-overlay">
             <span className="pill pill-accent">{label}</span>
             <button type="button" className="icon-button" onClick={() => void toggleVideo()} aria-label={playing ? "Mettre en pause" : "Lire"}>
@@ -131,7 +140,7 @@ export function ExerciseMedia({
     if (direct.media_type === "video" && direct.external_url) {
       return (
         <div className="media-frame" data-testid="exercise-media-frame" data-media-source="coach">
-          <video ref={videoRef} src={direct.external_url} playsInline muted loop autoPlay preload="metadata" aria-label={alt} />
+          <video ref={videoRef} src={direct.external_url} playsInline muted loop={!reduceMotion} autoPlay={!reduceMotion} preload="metadata" aria-label={alt} />
           <div className="media-overlay">
             <span className="pill">Source coach</span>
             <button type="button" className="icon-button" onClick={() => void toggleVideo()} aria-label={playing ? "Mettre en pause" : "Lire"}>

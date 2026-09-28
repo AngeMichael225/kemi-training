@@ -33,9 +33,13 @@ export function ExerciseLibrary({ items }: { items: ExerciseLibraryItem[] }) {
       <label className="label">Rechercher
         <div style={{ position: "relative" }}><Icon name="search" size={18} style={{ position: "absolute", left: 14, top: 16, color: "var(--text-secondary)" }} /><input className="input" style={{ paddingLeft: 42 }} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Squat, row, plank..." /></div>
       </label>
-      <div className="row wrap" aria-label="Filtre de section">
-        <button type="button" className={`pill ${section === "all" ? "pill-accent" : ""}`} onClick={() => setSection("all")}><Icon name="settings-sliders" size={13} /> Tous</button>
-        {sections.map((value) => <button type="button" key={value} className={`pill ${section === value ? "pill-accent" : ""}`} onClick={() => setSection(value)}>{value}</button>)}
+      <div className="row wrap filter-row" role="group" aria-label="Filtre de section">
+        <button type="button" className="touch-hit" aria-pressed={section === "all"} onClick={() => setSection("all")}><span className={`pill ${section === "all" ? "pill-accent" : ""}`}><Icon name="settings-sliders" size={13} /> Tous</span></button>
+        {sections.map((value) => (
+          <button type="button" key={value} className="touch-hit" aria-pressed={section === value} onClick={() => setSection(value)}>
+            <span className={`pill ${section === value ? "pill-accent" : ""}`}>{value}</span>
+          </button>
+        ))}
       </div>
       <div className="exercise-grid">
         {filtered.map((item) => (

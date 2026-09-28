@@ -17,7 +17,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hideNav = pathname.startsWith("/session/");
   return (
-    <div className="app-frame">
+    <div className="app-frame" data-nav={hideNav ? "hidden" : "visible"}>
+      <div className="sync-anchor">
+        <SyncStatus compact />
+      </div>
       <main className="app-main">{children}</main>
       {!hideNav ? (
         <nav className="bottom-nav" aria-label="Navigation principale">
@@ -34,9 +37,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
       ) : null}
-      <div style={{ position: "fixed", top: "max(10px, var(--safe-top))", right: 14, zIndex: 90 }}>
-        <SyncStatus compact />
-      </div>
     </div>
   );
 }
