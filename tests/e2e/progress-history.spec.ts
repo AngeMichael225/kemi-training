@@ -15,11 +15,13 @@ async function enterLocalMode(page: Page) {
 }
 
 async function startWorkoutFromToday(page: Page) {
+  // Pin Week 1 Day 1: Today follows calendar week; later weeks reuse names with different IDs.
+  await page.goto(`/workout/${WEEK1_DAY1}`);
   const start = page.getByRole("button", { name: /Commencer la s.ance/i }).first();
   await expect(start).toBeVisible();
   await expect(start).toBeEnabled();
   await start.click();
-  await expect(page).toHaveURL(/\/session\//, { timeout: 15_000 });
+  await expect(page).toHaveURL(new RegExp(`/session/.+\\?workout=${WEEK1_DAY1}`), { timeout: 15_000 });
 }
 
 async function skipRestIfPresent(page: Page) {

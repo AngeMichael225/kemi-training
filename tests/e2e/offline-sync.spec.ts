@@ -26,6 +26,13 @@ async function enterLocalMode(page: Page) {
   }
 }
 
+/** Pin Week 1 Day 1 — Today follows calendar week and reuses exercise names with different item IDs. */
+async function startWeek1Day1Workout(page: Page) {
+  await page.goto(`/workout/${WEEK1_DAY1}`);
+  await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/session/.+\\?workout=${WEEK1_DAY1}`), { timeout: 15_000 });
+}
+
 async function readStoredSessions(page: Page): Promise<StoredSessionRow[]> {
   return page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -142,8 +149,7 @@ test.describe("Wave 05 offline sync", () => {
   test("known session reloads offline with stored sets visible", async ({ page }) => {
     test.setTimeout(120_000);
 
-    await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
-    await expect(page).toHaveURL(/\/session\//, { timeout: 15_000 });
+    await startWeek1Day1Workout(page);
     const sessionUrl = page.url();
     const sessionId = new URL(sessionUrl).pathname.split("/").pop();
 
@@ -200,8 +206,7 @@ test.describe("Wave 05 offline sync", () => {
 
   test("Wave 03 regression: one active session, ordered sets, durable notes", async ({ page }) => {
     test.setTimeout(90_000);
-    await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
-    await expect(page).toHaveURL(/\/session\//, { timeout: 15_000 });
+    await startWeek1Day1Workout(page);
     await expect(page.getByRole("heading", { name: "Vélo" })).toBeVisible();
     await page.getByRole("button", { name: /Suivant/i }).click();
     await page.getByRole("button", { name: /Suivant/i }).click();

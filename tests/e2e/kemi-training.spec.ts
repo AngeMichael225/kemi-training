@@ -52,6 +52,13 @@ async function readPendingIds(page: Page): Promise<string[]> {
   });
 }
 
+/** Pin Week 1 Day 1 — Today follows calendar week and reuses exercise names with different item IDs. */
+async function startWeek1Day1Workout(page: Page) {
+  await page.goto(`/workout/${WEEK1_DAY1}`);
+  await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/session/.+\\?workout=${WEEK1_DAY1}`));
+}
+
 test.describe("KEMI Training local-first flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/auth/login");
@@ -137,7 +144,7 @@ test.describe("KEMI Training local-first flow", () => {
 
   test.describe("Wave 03 session persistence", () => {
     test("completed sets and progression survive reload", async ({ page }) => {
-      await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
+      await startWeek1Day1Workout(page);
       await expect(page.getByRole("heading", { name: "Vélo" })).toBeVisible();
       await page.getByRole("button", { name: /Suivant/i }).click();
       await expect(page.getByRole("heading", { name: "Glutes bridges" })).toBeVisible();
@@ -209,17 +216,16 @@ test.describe("KEMI Training local-first flow", () => {
     });
 
     test("starting another workout resumes the existing active session", async ({ page }) => {
-      await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
-      await expect(page).toHaveURL(/\/session\//);
+      await startWeek1Day1Workout(page);
       const started = new URL(page.url());
       const sessionId = started.pathname.split("/").pop();
       const workoutId = started.searchParams.get("workout");
-      const otherWorkout = workoutId === WEEK1_DAY2 ? WEEK1_DAY1 : WEEK1_DAY2;
+      expect(workoutId).toBe(WEEK1_DAY1);
 
-      await page.goto(`/workout/${otherWorkout}`);
+      await page.goto(`/workout/${WEEK1_DAY2}`);
       await page.getByRole("button", { name: /Commencer la s.ance/i }).first().click();
       await expect(page).toHaveURL(new RegExp(`/session/${sessionId}`));
-      expect(new URL(page.url()).searchParams.get("workout")).toBe(workoutId);
+      expect(new URL(page.url()).searchParams.get("workout")).toBe(WEEK1_DAY1);
 
       const sessions = await readStoredSessions(page);
       expect(sessions.filter((row) => row.status === "active")).toHaveLength(1);
