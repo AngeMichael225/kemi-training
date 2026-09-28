@@ -1,69 +1,100 @@
 # KEMI Training — Release checklist
 
-**PREFLIGHT ONLY — PRODUCTION NOT AUTHORIZED.**
+> **PREFLIGHT ONLY — PRODUCTION NOT AUTHORIZED**
+>
+> Production needs a later **explicit human GO**. Do not deploy Production, promote
+> Preview, mutate Production env vars, or change Supabase Auth URLs from this
+> checklist alone. Full runbook: [`docs/DEPLOYMENT.md`](./DEPLOYMENT.md).
 
-Production needs a later explicit human GO. Merging the Wave 08 preflight pull request is not that GO. Do not deploy Production, promote a Preview, change DNS, change Supabase Auth URLs, or set Vercel environment variables from this checklist's preflight pass.
+## Mode
 
-Status: `WAVE08_PREFLIGHT_READY`.
+| Item | Value |
+| --- | --- |
+| Wave | 08 preflight |
+| Status | `WAVE08_PREFLIGHT_READY` |
+| Production | **NOT AUTHORIZED** |
+| Device plan | `PREPARED_NOT_RUN` |
 
-Companion runbook: `docs/DEPLOYMENT.md`.
+## A. Pre-release baseline
 
-## Preflight result
+- [x] Document architecture: local Supabase Docker + one hosted project `kemi-training`
+- [x] Do not create staging / preview / extra Supabase projects
+- [x] `release/candidate` docs-only on pre-Wave 07 baseline
+- [ ] After Wave 07 merges: rebase/update candidate onto `main` (human-gated finalization)
+- [ ] Full CI green on final candidate
 
-- [x] Work is docs only on `release/candidate`.
-- [x] Baseline before this docs commit: `8b9e5b890f62ecc0068272f0b434076ca52f8f98`.
-- [x] Local Supabase Docker remains the development and integration environment.
-- [x] One hosted Supabase production project remains the only hosted database. Recorded project: `kemi-training` (`pripmaupaqorphvmkprl`). Not re-queried. Not recreated.
-- [x] Vercel auth blocker recorded. No Production deployment created.
-- [x] `PRODUCTION_ENV_CONTRACT`: **NOT YET CONFIGURED**.
-- [x] Canonical URL: **CANONICAL_PRODUCTION_URL_PENDING**.
-- [x] Rollback procedure documented in `docs/DEPLOYMENT.md` section 8. Not executed.
-- [x] Real-device plan below: **PREPARED_NOT_RUN**.
+## B. Preview (final candidate only)
 
-## Human GO gate
+- [ ] Preview Ready (not Production)
+- [ ] No Production Supabase credentials on Preview
+- [ ] Mobile smoke OK
+- [ ] Do not promote to Production
 
-Leave these unchecked until a person explicitly authorizes production.
+Initial preflight: Preview **not required** (docs-only).
 
-- [ ] Explicit human GO names the production SHA.
-- [ ] Wave 07 is already merged to `main` by a human. Do not ship the pre-Wave 07 baseline as production.
-- [ ] Canonical production origin is known. It is written here only after that happens: `________________`
-- [ ] Vercel Production has only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_APP_URL`. Values stay out of git and chat. `NEXT_PUBLIC_*` is browser-visible by design.
-- [ ] Vercel does not have `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, the database password, or a Supabase access token.
-- [ ] Supabase Auth Site URL is that canonical origin. Redirect allow-list includes `https://<canonical-origin>/auth/confirm`. Local Auth stays on `http://localhost:3000`.
-- [ ] The real production login email is not in any committed file.
-- [ ] Dry-run of `pnpm supabase db push --dry-run` shows no unexpected destructive migration.
-- [ ] CI is green. Rollback section has been read. Previous Production deployment id is known, or the first-deploy gap is recorded.
-- [ ] Production deploy completed by the human owner. Smoke test in `docs/DEPLOYMENT.md` section 7 passed.
+## C. Production env (after human GO)
 
-## Real iPhone 14 Pro Max script
+Configure **names only** until GO; then set Production values privately:
 
-Status: **PREPARED_NOT_RUN**.
+- [ ] `NEXT_PUBLIC_SUPABASE_URL`
+- [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- [ ] `NEXT_PUBLIC_APP_URL` (= canonical origin)
 
-Device: iPhone 14 Pro Max. Run only against the canonical HTTPS origin after the GO gate. Do not guess a URL.
+Never on Vercel:
 
-Both surfaces must show: no horizontal overflow, no HTTP 500, no visible runtime error, no stale chunk, no blank session, and **Estimated 1RM** wording.
+- [ ] Confirm absent: `SUPABASE_SECRET_KEY`
+- [ ] Confirm absent: `SUPABASE_SERVICE_ROLE_KEY`
+- [ ] Confirm absent: database password / access token
 
-### Safari
+Preflight audit: **NOT YET CONFIGURED** (zero env vars). Do not fix during preflight.
 
-- [ ] First load of the canonical origin paints. Not HTTP 500. Not blank.
-- [ ] Auth: `/auth/login` magic link opens `/auth/confirm` on this origin and reaches `/today`.
-- [ ] Today shows the workbook session.
-- [ ] Workout start, leave, resume the same session.
-- [ ] Log one prescribed set. Values stay the workbook values.
-- [ ] Reload. Session and set remain.
-- [ ] Exercise media renders in the viewport.
-- [ ] `/progress` says **Estimated 1RM**.
+`NEXT_PUBLIC_*` are browser-visible by design.
 
-### PWA standalone
+## D. Canonical URL
 
-- [ ] Safari → Add to Home Screen.
-- [ ] Launch from the icon in standalone display.
-- [ ] Top and bottom safe areas clear the status area and the home indicator. Bottom navigation is tappable.
-- [ ] Navigation across Today, plan, workout, Progress, and profile.
-- [ ] Workout and set logging inside standalone.
-- [ ] Rest timer still matches its end timestamp after a brief background.
-- [ ] Media inside standalone.
-- [ ] Airplane Mode reload of an already opened session still shows that session.
-- [ ] Online again: sync returns to confirmed or idle, and a pending mutation clears only after server acceptance.
+- Primary Vercel production origin: `https://kemi-training.vercel.app`
+- Custom domain: none
+- [ ] Human confirms this origin (or a future custom domain) before Auth cutover
 
-Do not check these boxes during preflight. The status remains `PREPARED_NOT_RUN` until a person runs the device.
+## E. Supabase Auth (after human GO)
+
+- [ ] Site URL = canonical origin
+- [ ] Redirect allow-list includes `{origin}/auth/confirm`
+- [ ] Local Auth remains `http://localhost:3000`
+- [ ] Do not commit the real production login email
+- [ ] Magic-link confirm succeeds on canonical origin
+
+## F. Production deploy (human GO required)
+
+- [ ] Explicit human GO recorded
+- [ ] Rollback procedure reviewed first (`DEPLOYMENT.md` §8)
+- [ ] Deploy Production from approved `main` SHA only
+- [ ] No `vercel --prod` / promote without GO
+- [ ] No `supabase db reset --linked`
+
+## G. Real iPhone 14 Pro Max (`PREPARED_NOT_RUN`)
+
+Safari: first load → Auth → Today → start/resume → set log → reload → media → Progress (Estimated 1RM wording).
+
+PWA: Add to Home Screen → standalone → safe areas → navigation → workout → rest timer → media → offline known-session reload → online → sync state.
+
+Also: no horizontal overflow, no 500, no runtime errors, no stale chunks, no blank session.
+
+- [ ] Executed
+- [ ] PASS / FAIL recorded
+
+## H. Post-deploy smoke
+
+- [ ] Origin 200 / shell
+- [ ] Login + Today + session log + Progress
+- [ ] No secret keys in client network/bundle
+
+## I. Rollback (documented, not executed in preflight)
+
+- [ ] Instant Rollback / prior Production deployment identified
+- [ ] Auth revert plan if URL cutover failed
+- [ ] Forward-fix migrations only (never linked reset)
+
+## J. Stop conditions
+
+Stop if: no human GO; Wave 07 conflict; CI red; forbidden secrets on Vercel; Auth mismatch; destructive migration dry-run; device blockers; pressure to skip rollback or force-push `main`.
